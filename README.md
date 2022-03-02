@@ -10,6 +10,7 @@ Truck 312, with all systems running, experiences higher than average bus load (~
 - Download [pcanrouter_devpack](https://www.peak-system.com/quick/DLP-DevPack) from PEAK for flashing tool, compiler, and examples
   - Also install "PEAK Flash" if you don't already have it [here](https://www.peak-system.com/fileadmin/media/files/PEAK-Flash.zip)
   - To install the compiler run/install both applications in the `Compiler` folder
+- Ask Platform team for the harness made to flash the PEAK Router. You'll need to have 8-30VDC powered at CAN1 of the PEAK Router. This harness isn't difficult to make, but is already available.
 
 # Behavior
 All except blacklisted messages from CAN1 are forwarded to CAN2. All messages from CAN2 are forwarded to CAN1.
@@ -18,8 +19,21 @@ All except blacklisted messages from CAN1 are forwarded to CAN2. All messages fr
 
 
 # Blacklisted Messages
-- Blacklist = [SWFDBKA_D2XX, SWFDBKB_D2XX, RQST_SC_D2XX, SWDM_D2XX, SWCMD_D2XX, SOFT_SC, DM2_SC, DM1_SC
-HRW_2C2, Prop2C2, EBC5_2C2, EBC1_2C2, XPR_2C2, XPR_2C2_INTERNAL]
+Blacklist =
+- SWFDBKA_D2XX
+- SWFDBKB_D2XX
+- RQST_SC_D2XX
+- SWDM_D2XX
+- SWCMD_D2XX
+- SOFT_SC
+- DM2_SC
+- DM1_SC
+- HRW_2C2
+- Prop2C2
+- EBC5_2C2
+- EBC1_2C2
+- XPR_2C2
+- XPR_2C2_INTERNAL
 
 
 
@@ -52,4 +66,4 @@ HRW_2C2, Prop2C2, EBC5_2C2, EBC1_2C2, XPR_2C2, XPR_2C2_INTERNAL]
 
 # Hook up (Truck Install)
 - Connect CAN 1 of the router at the VCAN extension behind the green 9-pin OEM diagnostic port
-- Connect CAN 2 into the daisy-chain (twisted pair at the end of the M12 cable connedted to the VCAN hub)
+- Connect CAN 2 into the daisy-chain (twisted pair at the end of the M12 cable connected to the VCAN hub)
