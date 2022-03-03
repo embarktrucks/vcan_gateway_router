@@ -5,6 +5,7 @@
 #include "hardware.h"
 #include "crc_data.h"
 
+
 # define TRUE  1
 # define FALSE 0
 
@@ -42,31 +43,25 @@ static u8_t CAN2_LED_Toggle;
 // Message Mask
 static u32_t mask_29 = 0x1FFFFFFF;
 
+
 // Blacklisted Message IDs...
 // ZF_d2xx_gear_mount_steering.dbc
-#define SWFDBKA_D2XX     2566909971 & mask_29
-#define SWFDBKB_D2XX     2566910227 & mask_29
-#define RQST_SC_D2XX     2565537785 & mask_29
-#define SWDM_D2XX        2566911763 & mask_29
-#define SWCMD_D2XX       2566909797 & mask_29
-#define SOFT_SC          2566838803 & mask_29
-#define DM2_SC           2566834963 & mask_29
-#define DM1_SC           2566834707 & mask_29
+#define SWFDBKA_D2XX     0x18FFF013 & mask_29  //18FFF013
+#define SWFDBKB_D2XX     0x18FFF113 & mask_29  //18FFF113
+#define RQST_SC_D2XX     0x18EAFFF9 & mask_29  //18EAFFF9
+#define SWDM_D2XX        0x18FFF713 & mask_29  //18FFF713
+#define SWCMD_D2XX       0x18FFEF65 & mask_29  //18FFEF65
+#define SOFT_SC          0x18FEDA13 & mask_29  //18FEDA13
+#define DM2_SC           0x18FECB13 & mask_29  //18FECB13
+#define DM1_SC           0x18FECA13 & mask_29  //18FECA13
 
 // brake_actuator_2C2_messages.dbc
-#define HRW_2C2          2298375728 & mask_29
-#define Prop2C2          2566865712 & mask_29
-#define EBC5_2C2         2566767664 & mask_29
-#define EBC1_2C2         2565865776 & mask_29
-#define XPR_2C2          2365544037 & mask_29
-#define XPR_2C2_INTERNAL 2365544002 & mask_29
-
-// // others
-// #define SWCMD            218099498 & mask_29
-// #define SWCMD_FDBK       218099557 & mask_29
-// #define SWFDBKA          419426323 & mask_29
-// #define SWFDBKB          419426579 & mask_29
-// #define Prop2C2          419382064 & mask_29
+#define HRW_2C2          0x8FE6E30 & mask_29  //8FE6E30
+#define Prop2C2          0x18FF4330 & mask_29 //18FF4330
+#define EBC5_2C2         0x18FDC430 & mask_29 //18FDC430
+#define EBC1_2C2         0x18F00130 & mask_29 //18F00130
+#define XPR_2C2          0xCFF5665 & mask_29  //CFF5665
+#define XPR_2C2_INTERNAL 0xCFF5642 & mask_29  //CFF5642
 
 
 static int check_IDs(u32_t id)
@@ -118,7 +113,7 @@ static void CAN1_to_CAN2(void){
 			TxMsg.Data32[1]	= RxMsg.Data32[1];
 
 			// send
-			CAN_UserWrite ( CAN_BUS1, &TxMsg);
+			CAN_UserWrite ( CAN_BUS2, &TxMsg);
 
 			// Toggle LEDs
 			CAN2_LED_Toggle ^= 1;
@@ -149,7 +144,7 @@ static void CAN2_to_CAN1(void){
 
 
 		// send
-		CAN_UserWrite ( CAN_BUS2, &TxMsg);
+		CAN_UserWrite ( CAN_BUS1, &TxMsg);
 
 		// Toggle LEDs
 		CAN1_LED_Toggle ^= 1;
@@ -166,8 +161,7 @@ static void CAN2_to_CAN1(void){
 
 // main()
 // entry point from crt0.S
-int  main ( void){
-
+int main(void){
 	// init hardware
 	HW_Init();
 
@@ -175,12 +169,9 @@ int  main ( void){
 	// DEFAULT BAUD RATE = 500K for CAN1 and CAN2
 	CAN_UserInit();
 
-
 	// Set green LEDs for CAN1 and CAN2
 	HW_SetLED ( HW_LED_CAN1, HW_LED_GREEN);
 	HW_SetLED ( HW_LED_CAN2, HW_LED_GREEN);
-
-
 
 	// main loop
 	while (1){

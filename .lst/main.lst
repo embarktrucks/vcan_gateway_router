@@ -1,0 +1,548 @@
+   1              		.cpu arm7tdmi-s
+   2              		.fpu softvfp
+   3              		.eabi_attribute 20, 1
+   4              		.eabi_attribute 21, 1
+   5              		.eabi_attribute 23, 3
+   6              		.eabi_attribute 24, 1
+   7              		.eabi_attribute 25, 1
+   8              		.eabi_attribute 26, 1
+   9              		.eabi_attribute 30, 2
+  10              		.eabi_attribute 34, 0
+  11              		.eabi_attribute 18, 4
+  12              		.file	"main.c"
+  13              		.text
+  14              	.Ltext0:
+  15              		.cfi_sections	.debug_frame
+  16              		.section	.text.startup,"ax",%progbits
+  17              		.align	2
+  18              		.global	main
+  20              	main:
+  21              	.LFB3:
+  22              		.file 1 "main.c"
+   1:main.c        **** 
+   2:main.c        **** #include "datatypes.h"
+   3:main.c        **** #include "can.h"
+   4:main.c        **** #include "can_user.h"
+   5:main.c        **** #include "hardware.h"
+   6:main.c        **** #include "crc_data.h"
+   7:main.c        **** 
+   8:main.c        **** 
+   9:main.c        **** # define TRUE  1
+  10:main.c        **** # define FALSE 0
+  11:main.c        **** 
+  12:main.c        **** /*
+  13:main.c        **** * VCAN Router
+  14:main.c        **** * Copyright: Embark Trucks 2022
+  15:main.c        **** * Author: Austin Robinson
+  16:main.c        **** * Two way router to forward messages (minus blacklist) for VCAN
+  17:main.c        **** */
+  18:main.c        **** 
+  19:main.c        **** 
+  20:main.c        **** // identifier is needed by PCANFlash.exe -> do not delete
+  21:main.c        **** const b8_t Ident[] __attribute__ ((used)) = { "PCAN-Router"};
+  22:main.c        **** 
+  23:main.c        **** 
+  24:main.c        **** // info data for PCANFlash.exe
+  25:main.c        **** const crc_array_t  C2F_Array __attribute__((section(".C2F_Info"), used)) = {
+  26:main.c        **** 
+  27:main.c        **** 	.Str = CRC_IDENT_STRING,
+  28:main.c        **** 	.Version = 0x21,
+  29:main.c        **** 	.Day = 5,
+  30:main.c        **** 	.Month = 5,
+  31:main.c        **** 	.Year = 6,
+  32:main.c        **** 	.Mode = 1,
+  33:main.c        **** 
+  34:main.c        **** 	// crc infos are patched during link time by flash.ld
+  35:main.c        **** 	// crc value is patched by PCANFlash.exe
+  36:main.c        **** };
+  37:main.c        **** 
+  38:main.c        **** 
+  39:main.c        **** // variables for LED toggle
+  40:main.c        **** static u8_t CAN1_LED_Toggle;
+  41:main.c        **** static u8_t CAN2_LED_Toggle;
+  42:main.c        **** 
+  43:main.c        **** // Message Mask
+  44:main.c        **** static u32_t mask_29 = 0x1FFFFFFF;
+  45:main.c        **** 
+  46:main.c        **** 
+  47:main.c        **** // Blacklisted Message IDs...
+  48:main.c        **** // ZF_d2xx_gear_mount_steering.dbc
+  49:main.c        **** #define SWFDBKA_D2XX     0x18FFF013 & mask_29  //18FFF013
+  50:main.c        **** #define SWFDBKB_D2XX     0x18FFF113 & mask_29  //18FFF113
+  51:main.c        **** #define RQST_SC_D2XX     0x18EAFFF9 & mask_29  //18EAFFF9
+  52:main.c        **** #define SWDM_D2XX        0x18FFF713 & mask_29  //18FFF713
+  53:main.c        **** #define SWCMD_D2XX       0x18FFEF65 & mask_29  //18FFEF65
+  54:main.c        **** #define SOFT_SC          0x18FEDA13 & mask_29  //18FEDA13
+  55:main.c        **** #define DM2_SC           0x18FECB13 & mask_29  //18FECB13
+  56:main.c        **** #define DM1_SC           0x18FECA13 & mask_29  //18FECA13
+  57:main.c        **** 
+  58:main.c        **** // brake_actuator_2C2_messages.dbc
+  59:main.c        **** #define HRW_2C2          0x8FE6E30 & mask_29  //8FE6E30
+  60:main.c        **** #define Prop2C2          0x18FF4330 & mask_29 //18FF4330
+  61:main.c        **** #define EBC5_2C2         0x18FDC430 & mask_29 //18FDC430
+  62:main.c        **** #define EBC1_2C2         0x18F00130 & mask_29 //18F00130
+  63:main.c        **** #define XPR_2C2          0xCFF5665 & mask_29  //CFF5665
+  64:main.c        **** #define XPR_2C2_INTERNAL 0xCFF5642 & mask_29  //CFF5642
+  65:main.c        **** 
+  66:main.c        **** 
+  67:main.c        **** static int check_IDs(u32_t id)
+  68:main.c        **** {
+  69:main.c        **** 	if((id == SWFDBKA_D2XX) || \
+  70:main.c        **** 		 (id == SWFDBKB_D2XX) || \
+  71:main.c        **** 		 (id == RQST_SC_D2XX) || \
+  72:main.c        **** 		 (id == SWDM_D2XX) || \
+  73:main.c        **** 		 (id == SWCMD_D2XX) || \
+  74:main.c        **** 		 (id == SOFT_SC) || \
+  75:main.c        **** 		 (id == DM2_SC) || \
+  76:main.c        **** 		 (id == DM1_SC) || \
+  77:main.c        **** 		 (id == HRW_2C2) || \
+  78:main.c        **** 		 (id == Prop2C2) || \
+  79:main.c        **** 		 (id == EBC5_2C2) || \
+  80:main.c        **** 		 (id == EBC1_2C2) || \
+  81:main.c        **** 		 (id == XPR_2C2) || \
+  82:main.c        **** 		 (id == XPR_2C2_INTERNAL)){
+  83:main.c        **** 				return TRUE;
+  84:main.c        **** 			} else {
+  85:main.c        **** 				return FALSE;
+  86:main.c        **** 			}
+  87:main.c        **** }
+  88:main.c        **** 
+  89:main.c        **** 
+  90:main.c        **** /*
+  91:main.c        **** Forward all CAN traffic from CAN1 (AV Actuators VCAN) to CAN2 (OEM Truck VCAN)
+  92:main.c        **** minus blacklisted messages.
+  93:main.c        **** If ID = Blacklisted:
+  94:main.c        **** 	Then don't forward message
+  95:main.c        **** else: forward message to CAN2
+  96:main.c        **** */
+  97:main.c        **** static void CAN1_to_CAN2(void){
+  98:main.c        **** 	CANMsg_t  RxMsg, TxMsg;
+  99:main.c        **** 	int id_match;
+ 100:main.c        **** 	id_match = TRUE; // default to passing messages through, unless ID is a match
+ 101:main.c        **** 
+ 102:main.c        **** 	// process messages from CAN1
+ 103:main.c        **** 	if ( CAN_UserRead ( CAN_BUS1, &RxMsg) != 0){
+ 104:main.c        **** 		// Forward CAN1 to CAN2
+ 105:main.c        **** 		u32_t masked_id = RxMsg.Id & mask_29;
+ 106:main.c        **** 		id_match = check_IDs(masked_id);
+ 107:main.c        **** 		if(!id_match){ // if not a match to an ID in the blacklist, then forward it
+ 108:main.c        **** 			// copy message
+ 109:main.c        **** 			TxMsg.Id   = RxMsg.Id;
+ 110:main.c        **** 			TxMsg.Type = RxMsg.Type;
+ 111:main.c        **** 			TxMsg.Len  = RxMsg.Len;
+ 112:main.c        **** 			TxMsg.Data32[0]	= RxMsg.Data32[0];
+ 113:main.c        **** 			TxMsg.Data32[1]	= RxMsg.Data32[1];
+ 114:main.c        **** 
+ 115:main.c        **** 			// send
+ 116:main.c        **** 			CAN_UserWrite ( CAN_BUS2, &TxMsg);
+ 117:main.c        **** 
+ 118:main.c        **** 			// Toggle LEDs
+ 119:main.c        **** 			CAN2_LED_Toggle ^= 1;
+ 120:main.c        **** 			if ( CAN2_LED_Toggle ){
+ 121:main.c        **** 				HW_SetLED ( HW_LED_CAN2, HW_LED_OFF);
+ 122:main.c        **** 			}else{
+ 123:main.c        **** 				HW_SetLED ( HW_LED_CAN2, HW_LED_ORANGE);
+ 124:main.c        **** 			}
+ 125:main.c        **** 		}
+ 126:main.c        **** 	}
+ 127:main.c        **** }
+ 128:main.c        **** 
+ 129:main.c        **** 
+ 130:main.c        **** /*
+ 131:main.c        **** Forward all CAN traffic from CAN2 (OEM Truck VCAN) to CAN1 (AV Actuators VCAN)
+ 132:main.c        **** */
+ 133:main.c        **** static void CAN2_to_CAN1(void){
+ 134:main.c        **** 	CANMsg_t  RxMsg, TxMsg;
+ 135:main.c        **** 
+ 136:main.c        **** 	// process messages from CAN1
+ 137:main.c        **** 	if ( CAN_UserRead ( CAN_BUS2, &RxMsg) != 0){
+ 138:main.c        **** 		// Forward CAN1 to CAN2
+ 139:main.c        **** 		TxMsg.Id   = RxMsg.Id;
+ 140:main.c        **** 		TxMsg.Type = RxMsg.Type;
+ 141:main.c        **** 		TxMsg.Len  = RxMsg.Len;
+ 142:main.c        **** 		TxMsg.Data32[0]	= RxMsg.Data32[0];
+ 143:main.c        **** 		TxMsg.Data32[1]	= RxMsg.Data32[1];
+ 144:main.c        **** 
+ 145:main.c        **** 
+ 146:main.c        **** 		// send
+ 147:main.c        **** 		CAN_UserWrite ( CAN_BUS1, &TxMsg);
+ 148:main.c        **** 
+ 149:main.c        **** 		// Toggle LEDs
+ 150:main.c        **** 		CAN1_LED_Toggle ^= 1;
+ 151:main.c        **** 		if ( CAN1_LED_Toggle ){
+ 152:main.c        **** 			HW_SetLED ( HW_LED_CAN1, HW_LED_OFF);
+ 153:main.c        **** 		} else{
+ 154:main.c        **** 			HW_SetLED ( HW_LED_CAN1, HW_LED_ORANGE);
+ 155:main.c        **** 		}
+ 156:main.c        **** 	}
+ 157:main.c        **** }
+ 158:main.c        **** 
+ 159:main.c        **** 
+ 160:main.c        **** 
+ 161:main.c        **** 
+ 162:main.c        **** // main()
+ 163:main.c        **** // entry point from crt0.S
+ 164:main.c        **** int main(void){
+  23              		.loc 1 164 0
+  24              		.cfi_startproc
+  25              		@ Function supports interworking.
+  26              		@ Volatile: function does not return.
+  27              		@ args = 0, pretend = 0, frame = 64
+  28              		@ frame_needed = 0, uses_anonymous_args = 0
+  29 0000 80402DE9 		stmfd	sp!, {r7, lr}
+  30              	.LCFI0:
+  31              		.cfi_def_cfa_offset 8
+  32              		.cfi_offset 7, -8
+  33              		.cfi_offset 14, -4
+  34 0004 40D04DE2 		sub	sp, sp, #64
+  35              	.LCFI1:
+  36              		.cfi_def_cfa_offset 72
+ 165:main.c        **** 	// init hardware
+ 166:main.c        **** 	HW_Init();
+  37              		.loc 1 166 0
+  38 0008 FEFFFFEB 		bl	HW_Init
+  39              	.LVL0:
+ 167:main.c        **** 
+ 168:main.c        **** 	// init CAN
+ 169:main.c        **** 	// DEFAULT BAUD RATE = 500K for CAN1 and CAN2
+ 170:main.c        **** 	CAN_UserInit();
+  40              		.loc 1 170 0
+  41 000c FEFFFFEB 		bl	CAN_UserInit
+  42              	.LVL1:
+ 171:main.c        **** 
+ 172:main.c        **** 	// Set green LEDs for CAN1 and CAN2
+ 173:main.c        **** 	HW_SetLED ( HW_LED_CAN1, HW_LED_GREEN);
+  43              		.loc 1 173 0
+  44 0010 0210A0E3 		mov	r1, #2
+  45 0014 0100A0E3 		mov	r0, #1
+  46 0018 FEFFFFEB 		bl	HW_SetLED
+  47              	.LVL2:
+ 174:main.c        **** 	HW_SetLED ( HW_LED_CAN2, HW_LED_GREEN);
+  48              		.loc 1 174 0
+  49 001c 0200A0E3 		mov	r0, #2
+  50 0020 0010A0E1 		mov	r1, r0
+  51 0024 FEFFFFEB 		bl	HW_SetLED
+  52              	.LVL3:
+  53 0028 8C419FE5 		ldr	r4, .L22
+  54              	.LBB9:
+  55              	.LBB10:
+  56              	.LBB11:
+  57              	.LBB12:
+  58              	.LBB13:
+  69:main.c        **** 	if((id == SWFDBKA_D2XX) || \
+  59              		.loc 1 69 0
+  60 002c 8C519FE5 		ldr	r5, .L22+4
+  61 0030 8C619FE5 		ldr	r6, .L22+8
+  70:main.c        **** 		 (id == SWFDBKB_D2XX) || \
+  62              		.loc 1 70 0
+  63 0034 8C719FE5 		ldr	r7, .L22+12
+  71:main.c        **** 		 (id == RQST_SC_D2XX) || \
+  64              		.loc 1 71 0
+  65 0038 8C819FE5 		ldr	r8, .L22+16
+  72:main.c        **** 		 (id == SWDM_D2XX) || \
+  66              		.loc 1 72 0
+  67 003c 8CA19FE5 		ldr	sl, .L22+20
+  73:main.c        **** 		 (id == SWCMD_D2XX) || \
+  68              		.loc 1 73 0
+  69 0040 8C919FE5 		ldr	r9, .L22+24
+  70              	.L17:
+  71              	.LVL4:
+  72              	.LBE13:
+  73              	.LBE12:
+  74              	.LBE11:
+ 103:main.c        **** 	if ( CAN_UserRead ( CAN_BUS1, &RxMsg) != 0){
+  75              		.loc 1 103 0 discriminator 1
+  76 0044 0000A0E3 		mov	r0, #0
+  77 0048 0D10A0E1 		mov	r1, sp
+  78 004c FEFFFFEB 		bl	CAN_UserRead
+  79              	.LVL5:
+  80 0050 000050E3 		cmp	r0, #0
+  81 0054 3900000A 		beq	.L2
+  82              	.LBB16:
+ 105:main.c        **** 		u32_t masked_id = RxMsg.Id & mask_29;
+  83              		.loc 1 105 0
+  84 0058 04209DE5 		ldr	r2, [sp, #4]
+  85 005c 0E32C2E3 		bic	r3, r2, #-536870912
+  86              	.LVL6:
+  87              	.LBB15:
+  88              	.LBB14:
+  69:main.c        **** 	if((id == SWFDBKA_D2XX) || \
+  89              		.loc 1 69 0
+  90 0060 050053E1 		cmp	r3, r5
+  91 0064 3500000A 		beq	.L2
+  92 0068 060053E1 		cmp	r3, r6
+  93 006c 3300000A 		beq	.L2
+  70:main.c        **** 		 (id == SWFDBKB_D2XX) || \
+  94              		.loc 1 70 0
+  95 0070 070053E1 		cmp	r3, r7
+  96 0074 3100000A 		beq	.L2
+  71:main.c        **** 		 (id == RQST_SC_D2XX) || \
+  97              		.loc 1 71 0
+  98 0078 080053E1 		cmp	r3, r8
+  99 007c 2F00000A 		beq	.L2
+  72:main.c        **** 		 (id == SWDM_D2XX) || \
+ 100              		.loc 1 72 0
+ 101 0080 0A0053E1 		cmp	r3, sl
+ 102 0084 2D00000A 		beq	.L2
+  73:main.c        **** 		 (id == SWCMD_D2XX) || \
+ 103              		.loc 1 73 0
+ 104 0088 090053E1 		cmp	r3, r9
+ 105 008c 2B00000A 		beq	.L2
+  74:main.c        **** 		 (id == SOFT_SC) || \
+ 106              		.loc 1 74 0
+ 107 0090 40119FE5 		ldr	r1, .L22+28
+ 108 0094 010053E1 		cmp	r3, r1
+ 109 0098 2800000A 		beq	.L2
+  75:main.c        **** 		 (id == DM2_SC) || \
+ 110              		.loc 1 75 0
+ 111 009c 011C41E2 		sub	r1, r1, #256
+ 112 00a0 010053E1 		cmp	r3, r1
+ 113 00a4 2500000A 		beq	.L2
+  76:main.c        **** 		 (id == DM1_SC) || \
+ 114              		.loc 1 76 0
+ 115 00a8 2C119FE5 		ldr	r1, .L22+32
+ 116 00ac 010053E1 		cmp	r3, r1
+ 117 00b0 2200000A 		beq	.L2
+  77:main.c        **** 		 (id == HRW_2C2) || \
+ 118              		.loc 1 77 0
+ 119 00b4 24119FE5 		ldr	r1, .L22+36
+ 120 00b8 010053E1 		cmp	r3, r1
+ 121 00bc 1F00000A 		beq	.L2
+  78:main.c        **** 		 (id == Prop2C2) || \
+ 122              		.loc 1 78 0
+ 123 00c0 1C119FE5 		ldr	r1, .L22+40
+ 124 00c4 010053E1 		cmp	r3, r1
+ 125 00c8 1C00000A 		beq	.L2
+  79:main.c        **** 		 (id == EBC5_2C2) || \
+ 126              		.loc 1 79 0
+ 127 00cc 14119FE5 		ldr	r1, .L22+44
+ 128 00d0 010053E1 		cmp	r3, r1
+ 129 00d4 1900000A 		beq	.L2
+  80:main.c        **** 		 (id == EBC1_2C2) || \
+ 130              		.loc 1 80 0
+ 131 00d8 0C119FE5 		ldr	r1, .L22+48
+ 132 00dc 010053E1 		cmp	r3, r1
+ 133 00e0 1600000A 		beq	.L2
+  81:main.c        **** 		 (id == XPR_2C2) || \
+ 134              		.loc 1 81 0
+ 135 00e4 231041E2 		sub	r1, r1, #35
+ 136 00e8 010053E1 		cmp	r3, r1
+ 137 00ec 1300000A 		beq	.L2
+ 138              	.LVL7:
+ 139              	.LBE14:
+ 140              	.LBE15:
+ 111:main.c        **** 			TxMsg.Len  = RxMsg.Len;
+ 141              		.loc 1 111 0
+ 142 00f0 0330DDE5 		ldrb	r3, [sp, #3]	@ zero_extendqisi2
+ 143              	.LVL8:
+ 144 00f4 1330CDE5 		strb	r3, [sp, #19]
+ 112:main.c        **** 			TxMsg.Data32[0]	= RxMsg.Data32[0];
+ 145              		.loc 1 112 0
+ 146 00f8 08309DE5 		ldr	r3, [sp, #8]
+ 110:main.c        **** 			TxMsg.Type = RxMsg.Type;
+ 147              		.loc 1 110 0
+ 148 00fc 02C0DDE5 		ldrb	ip, [sp, #2]	@ zero_extendqisi2
+ 112:main.c        **** 			TxMsg.Data32[0]	= RxMsg.Data32[0];
+ 149              		.loc 1 112 0
+ 150 0100 18308DE5 		str	r3, [sp, #24]
+ 113:main.c        **** 			TxMsg.Data32[1]	= RxMsg.Data32[1];
+ 151              		.loc 1 113 0
+ 152 0104 0C309DE5 		ldr	r3, [sp, #12]
+ 116:main.c        **** 			CAN_UserWrite ( CAN_BUS2, &TxMsg);
+ 153              		.loc 1 116 0
+ 154 0108 0100A0E3 		mov	r0, #1
+ 155 010c 10108DE2 		add	r1, sp, #16
+ 113:main.c        **** 			TxMsg.Data32[1]	= RxMsg.Data32[1];
+ 156              		.loc 1 113 0
+ 157 0110 1C308DE5 		str	r3, [sp, #28]
+ 109:main.c        **** 			TxMsg.Id   = RxMsg.Id;
+ 158              		.loc 1 109 0
+ 159 0114 14208DE5 		str	r2, [sp, #20]
+ 110:main.c        **** 			TxMsg.Type = RxMsg.Type;
+ 160              		.loc 1 110 0
+ 161 0118 12C0CDE5 		strb	ip, [sp, #18]
+ 116:main.c        **** 			CAN_UserWrite ( CAN_BUS2, &TxMsg);
+ 162              		.loc 1 116 0
+ 163 011c FEFFFFEB 		bl	CAN_UserWrite
+ 164              	.LVL9:
+ 119:main.c        **** 			CAN2_LED_Toggle ^= 1;
+ 165              		.loc 1 119 0
+ 166 0120 0130D4E5 		ldrb	r3, [r4, #1]	@ zero_extendqisi2
+ 167 0124 013023E2 		eor	r3, r3, #1
+ 120:main.c        **** 			if ( CAN2_LED_Toggle ){
+ 168              		.loc 1 120 0
+ 169 0128 000053E3 		cmp	r3, #0
+ 119:main.c        **** 			CAN2_LED_Toggle ^= 1;
+ 170              		.loc 1 119 0
+ 171 012c 0130C4E5 		strb	r3, [r4, #1]
+ 120:main.c        **** 			if ( CAN2_LED_Toggle ){
+ 172              		.loc 1 120 0
+ 173 0130 1D00001A 		bne	.L21
+ 123:main.c        **** 				HW_SetLED ( HW_LED_CAN2, HW_LED_ORANGE);
+ 174              		.loc 1 123 0
+ 175 0134 0200A0E3 		mov	r0, #2
+ 176 0138 0310A0E3 		mov	r1, #3
+ 177 013c FEFFFFEB 		bl	HW_SetLED
+ 178              	.LVL10:
+ 179              	.L2:
+ 180              	.LBE16:
+ 181              	.LBE10:
+ 182              	.LBE9:
+ 183              	.LBB19:
+ 184              	.LBB20:
+ 137:main.c        **** 	if ( CAN_UserRead ( CAN_BUS2, &RxMsg) != 0){
+ 185              		.loc 1 137 0
+ 186 0140 0100A0E3 		mov	r0, #1
+ 187 0144 20108DE2 		add	r1, sp, #32
+ 188 0148 FEFFFFEB 		bl	CAN_UserRead
+ 189              	.LVL11:
+ 190 014c 000050E3 		cmp	r0, #0
+ 191 0150 BBFFFF0A 		beq	.L17
+ 141:main.c        **** 		TxMsg.Len  = RxMsg.Len;
+ 192              		.loc 1 141 0
+ 193 0154 2330DDE5 		ldrb	r3, [sp, #35]	@ zero_extendqisi2
+ 194 0158 3330CDE5 		strb	r3, [sp, #51]
+ 142:main.c        **** 		TxMsg.Data32[0]	= RxMsg.Data32[0];
+ 195              		.loc 1 142 0
+ 196 015c 28309DE5 		ldr	r3, [sp, #40]
+ 140:main.c        **** 		TxMsg.Type = RxMsg.Type;
+ 197              		.loc 1 140 0
+ 198 0160 2220DDE5 		ldrb	r2, [sp, #34]	@ zero_extendqisi2
+ 139:main.c        **** 		TxMsg.Id   = RxMsg.Id;
+ 199              		.loc 1 139 0
+ 200 0164 24C09DE5 		ldr	ip, [sp, #36]
+ 142:main.c        **** 		TxMsg.Data32[0]	= RxMsg.Data32[0];
+ 201              		.loc 1 142 0
+ 202 0168 38308DE5 		str	r3, [sp, #56]
+ 143:main.c        **** 		TxMsg.Data32[1]	= RxMsg.Data32[1];
+ 203              		.loc 1 143 0
+ 204 016c 2C309DE5 		ldr	r3, [sp, #44]
+ 147:main.c        **** 		CAN_UserWrite ( CAN_BUS1, &TxMsg);
+ 205              		.loc 1 147 0
+ 206 0170 30108DE2 		add	r1, sp, #48
+ 207 0174 0000A0E3 		mov	r0, #0
+ 143:main.c        **** 		TxMsg.Data32[1]	= RxMsg.Data32[1];
+ 208              		.loc 1 143 0
+ 209 0178 3C308DE5 		str	r3, [sp, #60]
+ 139:main.c        **** 		TxMsg.Id   = RxMsg.Id;
+ 210              		.loc 1 139 0
+ 211 017c 34C08DE5 		str	ip, [sp, #52]
+ 140:main.c        **** 		TxMsg.Type = RxMsg.Type;
+ 212              		.loc 1 140 0
+ 213 0180 3220CDE5 		strb	r2, [sp, #50]
+ 147:main.c        **** 		CAN_UserWrite ( CAN_BUS1, &TxMsg);
+ 214              		.loc 1 147 0
+ 215 0184 FEFFFFEB 		bl	CAN_UserWrite
+ 216              	.LVL12:
+ 150:main.c        **** 		CAN1_LED_Toggle ^= 1;
+ 217              		.loc 1 150 0
+ 218 0188 0030D4E5 		ldrb	r3, [r4, #0]	@ zero_extendqisi2
+ 219 018c 013023E2 		eor	r3, r3, #1
+ 151:main.c        **** 		if ( CAN1_LED_Toggle ){
+ 220              		.loc 1 151 0
+ 221 0190 000053E3 		cmp	r3, #0
+ 152:main.c        **** 			HW_SetLED ( HW_LED_CAN1, HW_LED_OFF);
+ 222              		.loc 1 152 0
+ 223 0194 0010A013 		movne	r1, #0
+ 154:main.c        **** 			HW_SetLED ( HW_LED_CAN1, HW_LED_ORANGE);
+ 224              		.loc 1 154 0
+ 225 0198 0310A003 		moveq	r1, #3
+ 226 019c 0100A0E3 		mov	r0, #1
+ 150:main.c        **** 		CAN1_LED_Toggle ^= 1;
+ 227              		.loc 1 150 0
+ 228 01a0 0030C4E5 		strb	r3, [r4, #0]
+ 154:main.c        **** 			HW_SetLED ( HW_LED_CAN1, HW_LED_ORANGE);
+ 229              		.loc 1 154 0
+ 230 01a4 FEFFFFEB 		bl	HW_SetLED
+ 231              	.LVL13:
+ 232 01a8 A5FFFFEA 		b	.L17
+ 233              	.L21:
+ 234              	.LBE20:
+ 235              	.LBE19:
+ 236              	.LBB21:
+ 237              	.LBB18:
+ 238              	.LBB17:
+ 121:main.c        **** 				HW_SetLED ( HW_LED_CAN2, HW_LED_OFF);
+ 239              		.loc 1 121 0
+ 240 01ac 0010A0E3 		mov	r1, #0
+ 241 01b0 0200A0E3 		mov	r0, #2
+ 242 01b4 FEFFFFEB 		bl	HW_SetLED
+ 243              	.LVL14:
+ 244 01b8 E0FFFFEA 		b	.L2
+ 245              	.L23:
+ 246              		.align	2
+ 247              	.L22:
+ 248 01bc 00000000 		.word	.LANCHOR0
+ 249 01c0 13F0FF18 		.word	419426323
+ 250 01c4 13F1FF18 		.word	419426579
+ 251 01c8 F9FFEA18 		.word	418054137
+ 252 01cc 13F7FF18 		.word	419428115
+ 253 01d0 65EFFF18 		.word	419426149
+ 254 01d4 13DAFE18 		.word	419355155
+ 255 01d8 13CBFE18 		.word	419351315
+ 256 01dc 306EFE08 		.word	150892080
+ 257 01e0 3043FF18 		.word	419382064
+ 258 01e4 30C4FD18 		.word	419284016
+ 259 01e8 3001F018 		.word	418382128
+ 260 01ec 6556FF0C 		.word	218060389
+ 261              	.LBE17:
+ 262              	.LBE18:
+ 263              	.LBE21:
+ 264              		.cfi_endproc
+ 265              	.LFE3:
+ 267              		.global	C2F_Array
+ 268              		.global	Ident
+ 269              		.section	.rodata
+ 270              		.align	2
+ 273              	Ident:
+ 274 0000 5043414E 		.ascii	"PCAN-Router\000"
+ 274      2D526F75 
+ 274      74657200 
+ 275              		.bss
+ 276              		.set	.LANCHOR0,. + 0
+ 279              	CAN1_LED_Toggle:
+ 280 0000 00       		.space	1
+ 283              	CAN2_LED_Toggle:
+ 284 0001 00       		.space	1
+ 285              		.section	.C2F_Info,"a",%progbits
+ 286              		.align	2
+ 289              	C2F_Array:
+ 290 0000 4352432D 		.ascii	"CRC-Arrays\000"
+ 290      41727261 
+ 290      797300
+ 291 000b 00000000 		.space	5
+ 291      00
+ 292 0010 2100     		.short	33
+ 293 0012 0500     		.short	5
+ 294 0014 0500     		.short	5
+ 295 0016 06000000 		.4byte	6
+ 296 001a 00000000 		.space	6
+ 296      0000
+ 297 0020 0100     		.short	1
+ 298 0022 0000     		.text
+ 299              	.Letext0:
+ 300              		.file 2 "datatypes.h"
+ 301              		.file 3 "can.h"
+ 302              		.file 4 "crc_data.h"
+ 303              		.file 5 "can_user.h"
+ 304              		.file 6 "hardware.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 main.c
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccVxXb84.s:17     .text.startup:00000000 $a
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccVxXb84.s:20     .text.startup:00000000 main
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccVxXb84.s:248    .text.startup:000001bc $d
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccVxXb84.s:289    .C2F_Info:00000000 C2F_Array
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccVxXb84.s:273    .rodata:00000000 Ident
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccVxXb84.s:270    .rodata:00000000 $d
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccVxXb84.s:279    .bss:00000000 CAN1_LED_Toggle
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccVxXb84.s:280    .bss:00000000 $d
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccVxXb84.s:283    .bss:00000001 CAN2_LED_Toggle
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccVxXb84.s:286    .C2F_Info:00000000 $d
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+HW_Init
+CAN_UserInit
+HW_SetLED
+CAN_UserRead
+CAN_UserWrite

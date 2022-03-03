@@ -1,0 +1,558 @@
+   1              		.cpu arm7tdmi-s
+   2              		.fpu softvfp
+   3              		.eabi_attribute 20, 1
+   4              		.eabi_attribute 21, 1
+   5              		.eabi_attribute 23, 3
+   6              		.eabi_attribute 24, 1
+   7              		.eabi_attribute 25, 1
+   8              		.eabi_attribute 26, 1
+   9              		.eabi_attribute 30, 2
+  10              		.eabi_attribute 34, 0
+  11              		.eabi_attribute 18, 4
+  12              		.file	"can_user.c"
+  13              		.text
+  14              	.Ltext0:
+  15              		.cfi_sections	.debug_frame
+  16              		.align	2
+  17              		.global	CAN_UserWrite
+  19              	CAN_UserWrite:
+  20              	.LFB0:
+  21              		.file 1 "can_user.c"
+   1:can_user.c    **** 
+   2:can_user.c    **** #include "datatypes.h"
+   3:can_user.c    **** #include "lpc21xx.h"
+   4:can_user.c    **** #include "can.h"
+   5:can_user.c    **** #include "can_user.h"
+   6:can_user.c    **** 
+   7:can_user.c    **** 
+   8:can_user.c    **** // Queues for CAN1
+   9:can_user.c    **** CANMsg_t  TxQueueCAN1[CAN1_TX_QUEUE_SIZE];
+  10:can_user.c    **** CANMsg_t  RxQueueCAN1[CAN1_RX_QUEUE_SIZE];
+  11:can_user.c    **** 
+  12:can_user.c    **** 
+  13:can_user.c    **** // Queues for CAN2
+  14:can_user.c    **** CANMsg_t  TxQueueCAN2[CAN2_TX_QUEUE_SIZE];
+  15:can_user.c    **** CANMsg_t  RxQueueCAN2[CAN2_RX_QUEUE_SIZE];
+  16:can_user.c    **** 
+  17:can_user.c    **** 
+  18:can_user.c    **** 
+  19:can_user.c    **** // CAN_UserWrite()
+  20:can_user.c    **** // Send a message on CAN_BUSx
+  21:can_user.c    **** CANStatus_t  CAN_UserWrite ( CANHandle_t  hBus, CANMsg_t  *pBuff)
+  22:can_user.c    **** {
+  22              		.loc 1 22 0
+  23              		.cfi_startproc
+  24              		@ Function supports interworking.
+  25              		@ args = 0, pretend = 0, frame = 0
+  26              		@ frame_needed = 0, uses_anonymous_args = 0
+  27              	.LVL0:
+  28 0000 38402DE9 		stmfd	sp!, {r3, r4, r5, lr}
+  29              	.LCFI0:
+  30              		.cfi_def_cfa_offset 16
+  31              		.cfi_offset 3, -16
+  32              		.cfi_offset 4, -12
+  33              		.cfi_offset 5, -8
+  34              		.cfi_offset 14, -4
+  35              		.loc 1 22 0
+  36 0004 0050A0E1 		mov	r5, r0
+  37 0008 0140A0E1 		mov	r4, r1
+  23:can_user.c    **** 	CANStatus_t  ret;
+  24:can_user.c    **** 	CANMsg_t  *pMsg;
+  25:can_user.c    **** 
+  26:can_user.c    **** 
+  27:can_user.c    **** 	ret = CAN_ERR_OK;
+  28:can_user.c    **** 
+  29:can_user.c    **** 	pMsg = CAN_TxQueueGetNext ( hBus);
+  38              		.loc 1 29 0
+  39 000c FEFFFFEB 		bl	CAN_TxQueueGetNext
+  40              	.LVL1:
+  30:can_user.c    **** 
+  31:can_user.c    **** 	if ( pMsg != NULL)
+  41              		.loc 1 31 0
+  42 0010 003050E2 		subs	r3, r0, #0
+  32:can_user.c    **** 	{
+  33:can_user.c    **** 		pMsg->Id   = pBuff->Id;
+  34:can_user.c    **** 		pMsg->Len  = pBuff->Len;
+  35:can_user.c    **** 		pMsg->Type = pBuff->Type;
+  36:can_user.c    **** 
+  37:can_user.c    **** 		pMsg->Data32[0] = pBuff->Data32[0];
+  38:can_user.c    **** 		pMsg->Data32[1] = pBuff->Data32[1];
+  39:can_user.c    **** 
+  40:can_user.c    **** 		// Send Msg
+  41:can_user.c    **** 		ret = CAN_TxQueueWriteNext ( hBus);
+  42:can_user.c    **** 	}
+  43:can_user.c    **** 
+  44:can_user.c    **** 	else
+  45:can_user.c    **** 	{
+  46:can_user.c    **** 		// Tx Queue FULL
+  47:can_user.c    **** 		ret = CAN_ERR_FAIL;
+  43              		.loc 1 47 0
+  44 0014 0300A001 		moveq	r0, r3
+  45              	.LVL2:
+  31:can_user.c    **** 	if ( pMsg != NULL)
+  46              		.loc 1 31 0
+  47 0018 0B00000A 		beq	.L2
+  37:can_user.c    **** 		pMsg->Data32[0] = pBuff->Data32[0];
+  48              		.loc 1 37 0
+  49 001c 082094E5 		ldr	r2, [r4, #8]
+  50 0020 082083E5 		str	r2, [r3, #8]
+  34:can_user.c    **** 		pMsg->Len  = pBuff->Len;
+  51              		.loc 1 34 0
+  52 0024 0300D4E5 		ldrb	r0, [r4, #3]	@ zero_extendqisi2
+  33:can_user.c    **** 		pMsg->Id   = pBuff->Id;
+  53              		.loc 1 33 0
+  54 0028 04C094E5 		ldr	ip, [r4, #4]
+  35:can_user.c    **** 		pMsg->Type = pBuff->Type;
+  55              		.loc 1 35 0
+  56 002c 0210D4E5 		ldrb	r1, [r4, #2]	@ zero_extendqisi2
+  38:can_user.c    **** 		pMsg->Data32[1] = pBuff->Data32[1];
+  57              		.loc 1 38 0
+  58 0030 0C2094E5 		ldr	r2, [r4, #12]
+  34:can_user.c    **** 		pMsg->Len  = pBuff->Len;
+  59              		.loc 1 34 0
+  60 0034 0300C3E5 		strb	r0, [r3, #3]
+  33:can_user.c    **** 		pMsg->Id   = pBuff->Id;
+  61              		.loc 1 33 0
+  62 0038 04C083E5 		str	ip, [r3, #4]
+  35:can_user.c    **** 		pMsg->Type = pBuff->Type;
+  63              		.loc 1 35 0
+  64 003c 0210C3E5 		strb	r1, [r3, #2]
+  38:can_user.c    **** 		pMsg->Data32[1] = pBuff->Data32[1];
+  65              		.loc 1 38 0
+  66 0040 0C2083E5 		str	r2, [r3, #12]
+  41:can_user.c    **** 		ret = CAN_TxQueueWriteNext ( hBus);
+  67              		.loc 1 41 0
+  68 0044 0500A0E1 		mov	r0, r5
+  69 0048 FEFFFFEB 		bl	CAN_TxQueueWriteNext
+  70              	.LVL3:
+  71              	.L2:
+  48:can_user.c    **** 	}
+  49:can_user.c    **** 
+  50:can_user.c    **** 	return ret;
+  51:can_user.c    **** }
+  72              		.loc 1 51 0
+  73 004c 3840BDE8 		ldmfd	sp!, {r3, r4, r5, lr}
+  74 0050 1EFF2FE1 		bx	lr
+  75              		.cfi_endproc
+  76              	.LFE0:
+  78              		.align	2
+  79              		.global	CAN_UserRead
+  81              	CAN_UserRead:
+  82              	.LFB1:
+  52:can_user.c    **** 
+  53:can_user.c    **** 
+  54:can_user.c    **** 
+  55:can_user.c    **** 
+  56:can_user.c    **** // CAN_UserRead()
+  57:can_user.c    **** // read message from CAN_BUSx
+  58:can_user.c    **** u32_t  CAN_UserRead ( CANHandle_t  hBus, CANMsg_t  *pBuff)
+  59:can_user.c    **** {
+  83              		.loc 1 59 0
+  84              		.cfi_startproc
+  85              		@ Function supports interworking.
+  86              		@ args = 0, pretend = 0, frame = 0
+  87              		@ frame_needed = 0, uses_anonymous_args = 0
+  88              	.LVL4:
+  89 0054 38402DE9 		stmfd	sp!, {r3, r4, r5, lr}
+  90              	.LCFI1:
+  91              		.cfi_def_cfa_offset 16
+  92              		.cfi_offset 3, -16
+  93              		.cfi_offset 4, -12
+  94              		.cfi_offset 5, -8
+  95              		.cfi_offset 14, -4
+  96              		.loc 1 59 0
+  97 0058 0050A0E1 		mov	r5, r0
+  98 005c 0140A0E1 		mov	r4, r1
+  60:can_user.c    **** 	u32_t  ret;
+  61:can_user.c    **** 	CANMsg_t  *pMsg;
+  62:can_user.c    **** 
+  63:can_user.c    **** 
+  64:can_user.c    **** 	ret = 0;
+  65:can_user.c    **** 
+  66:can_user.c    **** 	pMsg = CAN_RxQueueGetNext ( hBus);
+  99              		.loc 1 66 0
+ 100 0060 FEFFFFEB 		bl	CAN_RxQueueGetNext
+ 101              	.LVL5:
+  67:can_user.c    **** 
+  68:can_user.c    **** 	if ( pMsg != NULL)
+ 102              		.loc 1 68 0
+ 103 0064 000050E3 		cmp	r0, #0
+ 104 0068 0C00000A 		beq	.L6
+  69:can_user.c    **** 	{
+  70:can_user.c    **** 		pBuff->Id   = pMsg->Id;
+  71:can_user.c    **** 		pBuff->Len  = pMsg->Len;
+  72:can_user.c    **** 		pBuff->Type = pMsg->Type;
+  73:can_user.c    **** 
+  74:can_user.c    **** 		pBuff->Data32[0] = pMsg->Data32[0];
+ 105              		.loc 1 74 0
+ 106 006c 082090E5 		ldr	r2, [r0, #8]
+ 107 0070 082084E5 		str	r2, [r4, #8]
+  70:can_user.c    **** 		pBuff->Id   = pMsg->Id;
+ 108              		.loc 1 70 0
+ 109 0074 04C090E5 		ldr	ip, [r0, #4]
+  71:can_user.c    **** 		pBuff->Len  = pMsg->Len;
+ 110              		.loc 1 71 0
+ 111 0078 0310D0E5 		ldrb	r1, [r0, #3]	@ zero_extendqisi2
+  72:can_user.c    **** 		pBuff->Type = pMsg->Type;
+ 112              		.loc 1 72 0
+ 113 007c 0220D0E5 		ldrb	r2, [r0, #2]	@ zero_extendqisi2
+  75:can_user.c    **** 		pBuff->Data32[1] = pMsg->Data32[1];
+ 114              		.loc 1 75 0
+ 115 0080 0C3090E5 		ldr	r3, [r0, #12]
+  70:can_user.c    **** 		pBuff->Id   = pMsg->Id;
+ 116              		.loc 1 70 0
+ 117 0084 04C084E5 		str	ip, [r4, #4]
+  71:can_user.c    **** 		pBuff->Len  = pMsg->Len;
+ 118              		.loc 1 71 0
+ 119 0088 0310C4E5 		strb	r1, [r4, #3]
+  72:can_user.c    **** 		pBuff->Type = pMsg->Type;
+ 120              		.loc 1 72 0
+ 121 008c 0220C4E5 		strb	r2, [r4, #2]
+ 122              		.loc 1 75 0
+ 123 0090 0C3084E5 		str	r3, [r4, #12]
+  76:can_user.c    **** 
+  77:can_user.c    **** 		CAN_RxQueueReadNext ( hBus);
+ 124              		.loc 1 77 0
+ 125 0094 0500A0E1 		mov	r0, r5
+ 126              	.LVL6:
+ 127 0098 FEFFFFEB 		bl	CAN_RxQueueReadNext
+ 128              	.LVL7:
+  78:can_user.c    **** 		ret = 1;
+ 129              		.loc 1 78 0
+ 130 009c 0100A0E3 		mov	r0, #1
+ 131              	.LVL8:
+ 132              	.L6:
+  79:can_user.c    **** 	}
+  80:can_user.c    **** 	else {
+  81:can_user.c    **** 		ret = CAN_ERR_FAIL;
+  82:can_user.c    **** 	}
+  83:can_user.c    **** 
+  84:can_user.c    **** 	return ret;
+  85:can_user.c    **** }
+ 133              		.loc 1 85 0
+ 134 00a0 3840BDE8 		ldmfd	sp!, {r3, r4, r5, lr}
+ 135 00a4 1EFF2FE1 		bx	lr
+ 136              		.cfi_endproc
+ 137              	.LFE1:
+ 139              		.align	2
+ 140              		.global	CAN_UserInit
+ 142              	CAN_UserInit:
+ 143              	.LFB2:
+  86:can_user.c    **** 
+  87:can_user.c    **** 
+  88:can_user.c    **** 
+  89:can_user.c    **** 
+  90:can_user.c    **** // CAN_UserInit()
+  91:can_user.c    **** // initialize CAN1 and CAN2
+  92:can_user.c    **** void  CAN_UserInit (void){
+ 144              		.loc 1 92 0
+ 145              		.cfi_startproc
+ 146              		@ Function supports interworking.
+ 147              		@ args = 0, pretend = 0, frame = 0
+ 148              		@ frame_needed = 0, uses_anonymous_args = 0
+ 149 00a8 38402DE9 		stmfd	sp!, {r3, r4, r5, lr}
+ 150              	.LCFI2:
+ 151              		.cfi_def_cfa_offset 16
+ 152              		.cfi_offset 3, -16
+ 153              		.cfi_offset 4, -12
+ 154              		.cfi_offset 5, -8
+ 155              		.cfi_offset 14, -4
+  93:can_user.c    **** 	// init CAN1
+  94:can_user.c    **** 
+  95:can_user.c    **** 	CAN_ReferenceTxQueue ( CAN_BUS1, &TxQueueCAN1[0], CAN1_TX_QUEUE_SIZE);				// Reference above Array
+ 156              		.loc 1 95 0
+ 157 00ac A0119FE5 		ldr	r1, .L9
+ 158 00b0 0820A0E3 		mov	r2, #8
+ 159 00b4 0000A0E3 		mov	r0, #0
+ 160 00b8 FEFFFFEB 		bl	CAN_ReferenceTxQueue
+ 161              	.LVL9:
+  96:can_user.c    **** 	CAN_ReferenceRxQueue ( CAN_BUS1, &RxQueueCAN1[0], CAN1_RX_QUEUE_SIZE);
+ 162              		.loc 1 96 0
+ 163 00bc 1020A0E3 		mov	r2, #16
+ 164 00c0 90119FE5 		ldr	r1, .L9+4
+ 165 00c4 0000A0E3 		mov	r0, #0
+ 166 00c8 FEFFFFEB 		bl	CAN_ReferenceRxQueue
+ 167              	.LVL10:
+  97:can_user.c    **** 
+  98:can_user.c    **** 	CAN_SetTimestampHandler ( CAN_BUS1, NULL);
+ 168              		.loc 1 98 0
+ 169 00cc 0000A0E3 		mov	r0, #0
+ 170 00d0 0010A0E1 		mov	r1, r0
+ 171 00d4 FEFFFFEB 		bl	CAN_SetTimestampHandler
+ 172              	.LVL11:
+  99:can_user.c    **** 
+ 100:can_user.c    **** 	VICVectAddr1 = (u32_t) CAN_GetIsrVector ( CAN1_TX_INTSOURCE);
+ 173              		.loc 1 100 0
+ 174 00d8 1400A0E3 		mov	r0, #20
+ 175 00dc FEFFFFEB 		bl	CAN_GetIsrVector
+ 176              	.LVL12:
+ 177 00e0 0040E0E3 		mvn	r4, #0
+ 178 00e4 0030A0E1 		mov	r3, r0
+ 179 00e8 FB3E04E5 		str	r3, [r4, #-3835]
+ 101:can_user.c    **** 	VICVectAddr3 = (u32_t) CAN_GetIsrVector ( CAN1_RX_INTSOURCE);
+ 180              		.loc 1 101 0
+ 181 00ec 1A00A0E3 		mov	r0, #26
+ 182 00f0 FEFFFFEB 		bl	CAN_GetIsrVector
+ 183              	.LVL13:
+ 184 00f4 0030A0E1 		mov	r3, r0
+ 185 00f8 F33E04E5 		str	r3, [r4, #-3827]
+ 102:can_user.c    **** 
+ 103:can_user.c    **** 	VICVectCntl1 = 1 << 5 | CAN1_TX_INTSOURCE;											// Setup VIC
+ 186              		.loc 1 103 0
+ 187 00fc 3430A0E3 		mov	r3, #52
+ 188 0100 FB3D04E5 		str	r3, [r4, #-3579]
+ 104:can_user.c    **** 	VICVectCntl3 = 1 << 5 | CAN1_RX_INTSOURCE;
+ 189              		.loc 1 104 0
+ 190 0104 3A30A0E3 		mov	r3, #58
+ 191 0108 F33D04E5 		str	r3, [r4, #-3571]
+ 105:can_user.c    **** 
+ 106:can_user.c    **** 	VICIntEnable = 1 << CAN1_TX_INTSOURCE | 1 << CAN1_RX_INTSOURCE;
+ 192              		.loc 1 106 0
+ 193 010c 4136A0E3 		mov	r3, #68157440
+ 194 0110 EF3F04E5 		str	r3, [r4, #-4079]
+ 107:can_user.c    **** 
+ 108:can_user.c    **** 	CAN_SetErrorLimit ( CAN_BUS1, STD_TX_ERRORLIMIT);
+ 195              		.loc 1 108 0
+ 196 0114 6010A0E3 		mov	r1, #96
+ 197 0118 0000A0E3 		mov	r0, #0
+ 198 011c FEFFFFEB 		bl	CAN_SetErrorLimit
+ 199              	.LVL14:
+ 109:can_user.c    **** 
+ 110:can_user.c    **** 	CAN_SetTxErrorCallback ( CAN_BUS1, NULL);											// Set ErrorLimit & Callbacks
+ 200              		.loc 1 110 0
+ 201 0120 0000A0E3 		mov	r0, #0
+ 202 0124 0010A0E1 		mov	r1, r0
+ 203 0128 FEFFFFEB 		bl	CAN_SetTxErrorCallback
+ 204              	.LVL15:
+ 111:can_user.c    **** 	CAN_SetRxCallback ( CAN_BUS1, NULL);
+ 205              		.loc 1 111 0
+ 206 012c 0000A0E3 		mov	r0, #0
+ 207 0130 0010A0E1 		mov	r1, r0
+ 208 0134 FEFFFFEB 		bl	CAN_SetRxCallback
+ 209              	.LVL16:
+ 112:can_user.c    **** 
+ 113:can_user.c    **** 	CAN_SetChannelInfo ( CAN_BUS1, NULL);													// Textinfo is NULL
+ 210              		.loc 1 113 0
+ 211 0138 0000A0E3 		mov	r0, #0
+ 212 013c 0010A0E1 		mov	r1, r0
+ 213 0140 FEFFFFEB 		bl	CAN_SetChannelInfo
+ 214              	.LVL17:
+ 114:can_user.c    **** 
+ 115:can_user.c    **** 
+ 116:can_user.c    **** 	// init CAN2
+ 117:can_user.c    **** 
+ 118:can_user.c    **** 	CAN_ReferenceTxQueue ( CAN_BUS2, &TxQueueCAN2[0], CAN2_TX_QUEUE_SIZE);
+ 215              		.loc 1 118 0
+ 216 0144 10119FE5 		ldr	r1, .L9+8
+ 217 0148 0820A0E3 		mov	r2, #8
+ 218 014c 0100A0E3 		mov	r0, #1
+ 219 0150 FEFFFFEB 		bl	CAN_ReferenceTxQueue
+ 220              	.LVL18:
+ 119:can_user.c    **** 	CAN_ReferenceRxQueue ( CAN_BUS2, &RxQueueCAN2[0], CAN2_RX_QUEUE_SIZE);				// See above
+ 221              		.loc 1 119 0
+ 222 0154 1020A0E3 		mov	r2, #16
+ 223 0158 00119FE5 		ldr	r1, .L9+12
+ 224 015c 0100A0E3 		mov	r0, #1
+ 225 0160 FEFFFFEB 		bl	CAN_ReferenceRxQueue
+ 226              	.LVL19:
+ 120:can_user.c    **** 
+ 121:can_user.c    **** 	CAN_SetTimestampHandler ( CAN_BUS2, NULL);
+ 227              		.loc 1 121 0
+ 228 0164 0010A0E3 		mov	r1, #0
+ 229 0168 0100A0E3 		mov	r0, #1
+ 230 016c FEFFFFEB 		bl	CAN_SetTimestampHandler
+ 231              	.LVL20:
+ 122:can_user.c    **** 
+ 123:can_user.c    **** 	VICVectAddr2 = (u32_t) CAN_GetIsrVector ( CAN2_TX_INTSOURCE);
+ 232              		.loc 1 123 0
+ 233 0170 1500A0E3 		mov	r0, #21
+ 234 0174 FEFFFFEB 		bl	CAN_GetIsrVector
+ 235              	.LVL21:
+ 236 0178 0030A0E1 		mov	r3, r0
+ 237 017c F73E04E5 		str	r3, [r4, #-3831]
+ 124:can_user.c    **** 	VICVectAddr4 = (u32_t) CAN_GetIsrVector ( CAN2_RX_INTSOURCE);
+ 238              		.loc 1 124 0
+ 239 0180 1B00A0E3 		mov	r0, #27
+ 240 0184 FEFFFFEB 		bl	CAN_GetIsrVector
+ 241              	.LVL22:
+ 242 0188 0030A0E1 		mov	r3, r0
+ 243 018c EF3E04E5 		str	r3, [r4, #-3823]
+ 125:can_user.c    **** 
+ 126:can_user.c    **** 	VICVectCntl2 = 1 << 5 | CAN2_TX_INTSOURCE;
+ 244              		.loc 1 126 0
+ 245 0190 3530A0E3 		mov	r3, #53
+ 246 0194 F73D04E5 		str	r3, [r4, #-3575]
+ 127:can_user.c    **** 	VICVectCntl4 = 1 << 5 | CAN2_RX_INTSOURCE;
+ 247              		.loc 1 127 0
+ 248 0198 3B30A0E3 		mov	r3, #59
+ 249 019c EF3D04E5 		str	r3, [r4, #-3567]
+ 128:can_user.c    **** 
+ 129:can_user.c    **** 	VICIntEnable = 1 << CAN2_TX_INTSOURCE | 1 << CAN2_RX_INTSOURCE;
+ 250              		.loc 1 129 0
+ 251 01a0 8236A0E3 		mov	r3, #136314880
+ 252 01a4 EF3F04E5 		str	r3, [r4, #-4079]
+ 130:can_user.c    **** 
+ 131:can_user.c    **** 	CAN_SetErrorLimit ( CAN_BUS2, STD_TX_ERRORLIMIT);
+ 253              		.loc 1 131 0
+ 254 01a8 6010A0E3 		mov	r1, #96
+ 255 01ac 0100A0E3 		mov	r0, #1
+ 256 01b0 FEFFFFEB 		bl	CAN_SetErrorLimit
+ 257              	.LVL23:
+ 132:can_user.c    **** 
+ 133:can_user.c    **** 	CAN_SetTxErrorCallback ( CAN_BUS2, NULL);
+ 258              		.loc 1 133 0
+ 259 01b4 0010A0E3 		mov	r1, #0
+ 260 01b8 0100A0E3 		mov	r0, #1
+ 261 01bc FEFFFFEB 		bl	CAN_SetTxErrorCallback
+ 262              	.LVL24:
+ 134:can_user.c    **** 	CAN_SetRxCallback ( CAN_BUS2, NULL);
+ 263              		.loc 1 134 0
+ 264 01c0 0010A0E3 		mov	r1, #0
+ 265 01c4 0100A0E3 		mov	r0, #1
+ 266 01c8 FEFFFFEB 		bl	CAN_SetRxCallback
+ 267              	.LVL25:
+ 135:can_user.c    **** 
+ 136:can_user.c    **** 	CAN_SetChannelInfo ( CAN_BUS2, NULL);
+ 268              		.loc 1 136 0
+ 269 01cc 0010A0E3 		mov	r1, #0
+ 270 01d0 0100A0E3 		mov	r0, #1
+ 271 01d4 FEFFFFEB 		bl	CAN_SetChannelInfo
+ 272              	.LVL26:
+ 137:can_user.c    **** 
+ 138:can_user.c    **** 
+ 139:can_user.c    **** 	// Set Error Handler
+ 140:can_user.c    **** 
+ 141:can_user.c    **** 	VICVectAddr0 = (u32_t) CAN_GetIsrVector ( GLOBAL_CAN_INTSOURCE);
+ 273              		.loc 1 141 0
+ 274 01d8 1300A0E3 		mov	r0, #19
+ 275 01dc FEFFFFEB 		bl	CAN_GetIsrVector
+ 276              	.LVL27:
+ 142:can_user.c    **** 	VICVectCntl0 = 1 << 5 | GLOBAL_CAN_INTSOURCE;
+ 277              		.loc 1 142 0
+ 278 01e0 3330A0E3 		mov	r3, #51
+ 141:can_user.c    **** 	VICVectAddr0 = (u32_t) CAN_GetIsrVector ( GLOBAL_CAN_INTSOURCE);
+ 279              		.loc 1 141 0
+ 280 01e4 FF0E04E5 		str	r0, [r4, #-3839]
+ 281              		.loc 1 142 0
+ 282 01e8 FF3D04E5 		str	r3, [r4, #-3583]
+ 143:can_user.c    **** 	VICIntEnable = 1 << GLOBAL_CAN_INTSOURCE;
+ 283              		.loc 1 143 0
+ 284 01ec 0237A0E3 		mov	r3, #524288
+ 285 01f0 EF3F04E5 		str	r3, [r4, #-4079]
+ 144:can_user.c    **** 
+ 145:can_user.c    **** 
+ 146:can_user.c    **** 	// Setup Filters
+ 147:can_user.c    **** 
+ 148:can_user.c    **** 	CAN_InitFilters();										// Clear Filter LUT
+ 149:can_user.c    **** 	CAN_SetFilterMode ( AF_ON_BYPASS_ON);				// No Filters ( Bypassed)
+ 150:can_user.c    **** 
+ 151:can_user.c    **** 
+ 152:can_user.c    **** 	// init CAN1 and CAN2 with Values above
+ 153:can_user.c    **** 
+ 154:can_user.c    **** 	CAN_InitChannel ( CAN_BUS1, CAN_BAUD_500K);
+ 286              		.loc 1 154 0
+ 287 01f4 68509FE5 		ldr	r5, .L9+16
+ 148:can_user.c    **** 	CAN_InitFilters();										// Clear Filter LUT
+ 288              		.loc 1 148 0
+ 289 01f8 FEFFFFEB 		bl	CAN_InitFilters
+ 290              	.LVL28:
+ 149:can_user.c    **** 	CAN_SetFilterMode ( AF_ON_BYPASS_ON);				// No Filters ( Bypassed)
+ 291              		.loc 1 149 0
+ 292 01fc 0200A0E3 		mov	r0, #2
+ 293 0200 FEFFFFEB 		bl	CAN_SetFilterMode
+ 294              	.LVL29:
+ 295              		.loc 1 154 0
+ 296 0204 0510A0E1 		mov	r1, r5
+ 297 0208 0000A0E3 		mov	r0, #0
+ 298 020c FEFFFFEB 		bl	CAN_InitChannel
+ 299              	.LVL30:
+ 155:can_user.c    **** 	CAN_InitChannel ( CAN_BUS2, CAN_BAUD_500K);
+ 300              		.loc 1 155 0
+ 301 0210 0510A0E1 		mov	r1, r5
+ 302 0214 0100A0E3 		mov	r0, #1
+ 303 0218 FEFFFFEB 		bl	CAN_InitChannel
+ 304              	.LVL31:
+ 156:can_user.c    **** 
+ 157:can_user.c    **** 
+ 158:can_user.c    **** 	//
+ 159:can_user.c    **** 	CAN_SetTransceiverMode ( CAN_BUS1, CAN_TRANSCEIVER_MODE_NORMAL);
+ 305              		.loc 1 159 0
+ 306 021c 0000A0E3 		mov	r0, #0
+ 307 0220 0010A0E1 		mov	r1, r0
+ 308 0224 FEFFFFEB 		bl	CAN_SetTransceiverMode
+ 309              	.LVL32:
+ 160:can_user.c    **** 	CAN_SetTransceiverMode ( CAN_BUS2, CAN_TRANSCEIVER_MODE_NORMAL);
+ 310              		.loc 1 160 0
+ 311 0228 0010A0E3 		mov	r1, #0
+ 312 022c 0100A0E3 		mov	r0, #1
+ 313 0230 FEFFFFEB 		bl	CAN_SetTransceiverMode
+ 314              	.LVL33:
+ 161:can_user.c    **** 
+ 162:can_user.c    **** 
+ 163:can_user.c    **** 	// Busses on
+ 164:can_user.c    **** 
+ 165:can_user.c    **** 	CAN_SetBusMode ( CAN_BUS1, BUS_ON);					// CAN Bus On
+ 315              		.loc 1 165 0
+ 316 0234 0000A0E3 		mov	r0, #0
+ 317 0238 0010A0E1 		mov	r1, r0
+ 318 023c FEFFFFEB 		bl	CAN_SetBusMode
+ 319              	.LVL34:
+ 166:can_user.c    **** 	CAN_SetBusMode ( CAN_BUS2, BUS_ON);
+ 320              		.loc 1 166 0
+ 321 0240 0010A0E3 		mov	r1, #0
+ 322 0244 0100A0E3 		mov	r0, #1
+ 323 0248 FEFFFFEB 		bl	CAN_SetBusMode
+ 324              	.LVL35:
+ 167:can_user.c    **** 
+ 168:can_user.c    **** }
+ 325              		.loc 1 168 0
+ 326 024c 3840BDE8 		ldmfd	sp!, {r3, r4, r5, lr}
+ 327 0250 1EFF2FE1 		bx	lr
+ 328              	.L10:
+ 329              		.align	2
+ 330              	.L9:
+ 331 0254 00000000 		.word	TxQueueCAN1
+ 332 0258 00000000 		.word	RxQueueCAN1
+ 333 025c 00000000 		.word	TxQueueCAN2
+ 334 0260 00000000 		.word	RxQueueCAN2
+ 335 0264 07002A00 		.word	2752519
+ 336              		.cfi_endproc
+ 337              	.LFE2:
+ 339              		.comm	RxQueueCAN2,256,4
+ 340              		.comm	TxQueueCAN2,128,4
+ 341              		.comm	RxQueueCAN1,256,4
+ 342              		.comm	TxQueueCAN1,128,4
+ 343              	.Letext0:
+ 344              		.file 2 "datatypes.h"
+ 345              		.file 3 "can.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 can_user.c
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccN58Qqh.s:16     .text:00000000 $a
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccN58Qqh.s:19     .text:00000000 CAN_UserWrite
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccN58Qqh.s:81     .text:00000054 CAN_UserRead
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccN58Qqh.s:142    .text:000000a8 CAN_UserInit
+C:\Users\AUSTIN~1.ROB\AppData\Local\Temp\ccN58Qqh.s:331    .text:00000254 $d
+                            *COM*:00000080 TxQueueCAN1
+                            *COM*:00000100 RxQueueCAN1
+                            *COM*:00000080 TxQueueCAN2
+                            *COM*:00000100 RxQueueCAN2
+                     .debug_frame:00000010 $d
+
+UNDEFINED SYMBOLS
+CAN_TxQueueGetNext
+CAN_TxQueueWriteNext
+CAN_RxQueueGetNext
+CAN_RxQueueReadNext
+CAN_ReferenceTxQueue
+CAN_ReferenceRxQueue
+CAN_SetTimestampHandler
+CAN_GetIsrVector
+CAN_SetErrorLimit
+CAN_SetTxErrorCallback
+CAN_SetRxCallback
+CAN_SetChannelInfo
+CAN_InitFilters
+CAN_SetFilterMode
+CAN_InitChannel
+CAN_SetTransceiverMode
+CAN_SetBusMode

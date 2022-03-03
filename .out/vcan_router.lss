@@ -1,0 +1,2570 @@
+
+vcan_router.elf:     file format elf32-littlearm
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         00001c40  00002000  00002000  00002000  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .C2F_Info     00000030  0003df00  0003df00  00005f00  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+  2 .bss          00000380  40000000  00003c40  00008000  2**2
+                  ALLOC
+  3 .stack        00000320  40000380  00003fc0  00008000  2**0
+                  ALLOC
+  4 .comment      00000022  00000000  00000000  00005f30  2**0
+                  CONTENTS, READONLY
+  5 .ARM.attributes 00000030  00000000  00000000  00005f52  2**0
+                  CONTENTS, READONLY
+  6 .debug_aranges 00000080  00000000  00000000  00005f88  2**3
+                  CONTENTS, READONLY, DEBUGGING
+  7 .debug_info   00000dc3  00000000  00000000  00006008  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  8 .debug_abbrev 000003e2  00000000  00000000  00006dcb  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  9 .debug_line   00000259  00000000  00000000  000071ad  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 10 .debug_frame  0000009c  00000000  00000000  00007408  2**2
+                  CONTENTS, READONLY, DEBUGGING
+ 11 .debug_str    0000036c  00000000  00000000  000074a4  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 12 .debug_loc    000001c0  00000000  00000000  00007810  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 13 .debug_ranges 00000078  00000000  00000000  000079d0  2**0
+                  CONTENTS, READONLY, DEBUGGING
+
+Disassembly of section .text:
+
+00002000 <_boot>:
+_boot:
+
+// Runtime Interrupt Vectors
+// -------------------------
+Vectors:
+		b     _start                    // reset - _start
+    2000:	ea000012 	b	2050 <_mainCRTStartup>
+		ldr   pc,_undf                  // undefined - _undf
+    2004:	e59ff014 	ldr	pc, [pc, #20]	; 2020 <_undf>
+		ldr   pc,_swi                   // SWI - _swi
+    2008:	e59ff014 	ldr	pc, [pc, #20]	; 2024 <_swi>
+		ldr   pc,_pabt                  // program abort - _pabt
+    200c:	e59ff014 	ldr	pc, [pc, #20]	; 2028 <_pabt>
+		ldr   pc,_dabt                  // data abort - _dabt
+    2010:	e59ff014 	ldr	pc, [pc, #20]	; 202c <_dabt>
+		nop                             // reserved
+    2014:	e1a00000 	nop			; (mov r0, r0)
+		ldr   pc,[pc,#-0xFF0]           // IRQ - read the VIC
+    2018:	e51ffff0 	ldr	pc, [pc, #-4080]	; 1030 <PLLSTAT_PLOCK+0xc30>
+		ldr   pc,_fiq                   // FIQ - _fiq
+    201c:	e59ff010 	ldr	pc, [pc, #16]	; 2034 <_fiq>
+
+00002020 <_undf>:
+    2020:	00002038 	.word	0x00002038
+
+00002024 <_swi>:
+    2024:	0000203c 	.word	0x0000203c
+
+00002028 <_pabt>:
+    2028:	00002040 	.word	0x00002040
+
+0000202c <_dabt>:
+    202c:	00002044 	.word	0x00002044
+
+00002030 <_irq>:
+    2030:	00002048 	.word	0x00002048
+
+00002034 <_fiq>:
+    2034:	0000204c 	.word	0x0000204c
+
+00002038 <__undf>:
+_pabt:  .word __pabt                    // program abort
+_dabt:  .word __dabt                    // data abort
+_irq:   .word __irq                     // IRQ
+_fiq:   .word __fiq                     // FIQ
+
+__undf:	b	.							// undefined
+    2038:	eafffffe 	b	2038 <__undf>
+
+0000203c <__swi>:
+__swi:	b	.							// SWI
+    203c:	eafffffe 	b	203c <__swi>
+
+00002040 <__pabt>:
+__pabt:	b	.							// program abort
+    2040:	eafffffe 	b	2040 <__pabt>
+
+00002044 <__dabt>:
+__dabt:	b	.							// data abort
+    2044:	eafffffe 	b	2044 <__dabt>
+
+00002048 <__irq>:
+__irq:	b	.							// IRQ
+    2048:	eafffffe 	b	2048 <__irq>
+
+0000204c <__fiq>:
+__fiq:	b	.							// FIQ
+    204c:	eafffffe 	b	204c <__fiq>
+
+00002050 <_mainCRTStartup>:
+_start:
+start:
+_mainCRTStartup:
+
+// VPB_DIV Setup
+		LDR     R0, =VPBDIV
+    2050:	e59f0108 	ldr	r0, [pc, #264]	; 2160 <_reset+0x4>
+		LDR     R1, =VPBDIV_Val
+    2054:	e3a01001 	mov	r1, #1
+		STR     R1, [R0]
+    2058:	e5801000 	str	r1, [r0]
+
+
+// PLL Setup
+		LDR     R0, =PLL_BASE
+    205c:	e59f0100 	ldr	r0, [pc, #256]	; 2164 <_reset+0x8>
+		MOV     R1, #0xAA
+    2060:	e3a010aa 	mov	r1, #170	; 0xaa
+		MOV     R2, #0x55
+    2064:	e3a02055 	mov	r2, #85	; 0x55
+
+// Configure and Enable PLL
+		MOV     R3, #PLLCFG_Val
+    2068:	e3a03024 	mov	r3, #36	; 0x24
+		STR     R3, [R0, #PLLCFG_OFS] 
+    206c:	e5803004 	str	r3, [r0, #4]
+		MOV     R3, #PLLCON_PLLE
+    2070:	e3a03001 	mov	r3, #1
+		STR     R3, [R0, #PLLCON_OFS]
+    2074:	e5803000 	str	r3, [r0]
+		STR     R1, [R0, #PLLFEED_OFS]
+    2078:	e580100c 	str	r1, [r0, #12]
+		STR     R2, [R0, #PLLFEED_OFS]
+    207c:	e580200c 	str	r2, [r0, #12]
+
+00002080 <PLL_Loop>:
+
+// Wait until PLL Locked
+PLL_Loop:
+		LDR     R3, [R0, #PLLSTAT_OFS]
+    2080:	e5903008 	ldr	r3, [r0, #8]
+		ANDS    R3, R3, #PLLSTAT_PLOCK
+    2084:	e2133b01 	ands	r3, r3, #1024	; 0x400
+		BEQ     PLL_Loop
+    2088:	0afffffc 	beq	2080 <PLL_Loop>
+
+// Switch to PLL Clock
+		MOV     R3, #(PLLCON_PLLE | PLLCON_PLLC)
+    208c:	e3a03003 	mov	r3, #3
+		STR     R3, [R0, #PLLCON_OFS]
+    2090:	e5803000 	str	r3, [r0]
+		STR     R1, [R0, #PLLFEED_OFS]
+    2094:	e580100c 	str	r1, [r0, #12]
+		STR     R2, [R0, #PLLFEED_OFS]
+    2098:	e580200c 	str	r2, [r0, #12]
+
+// MAM Setup
+		LDR     R0, =MAM_BASE
+    209c:	e59f00c4 	ldr	r0, [pc, #196]	; 2168 <_reset+0xc>
+		MOV     R1, #MAMTIM_Val
+    20a0:	e3a01003 	mov	r1, #3
+		STR     R1, [R0, #MAMTIM_OFS] 
+    20a4:	e5801004 	str	r1, [r0, #4]
+		MOV     R1, #MAMCR_Val
+    20a8:	e3a01002 	mov	r1, #2
+		STR     R1, [R0, #MAMCR_OFS] 
+    20ac:	e5801000 	str	r1, [r0]
+
+
+// Initialize Interrupt System
+// - Set stack location for each mode
+// -----------------------------------------------        
+		MSR   CPSR_c,#MODE_UND|I_BIT|F_BIT	// Undefined Instruction Mode
+    20b0:	e321f0db 	msr	CPSR_c, #219	; 0xdb
+		LDR   sp,=_UNDStackTop
+    20b4:	e59fd0b0 	ldr	sp, [pc, #176]	; 216c <_reset+0x10>
+
+		MSR   CPSR_c,#MODE_ABT|I_BIT|F_BIT	// Abort Mode
+    20b8:	e321f0d7 	msr	CPSR_c, #215	; 0xd7
+		LDR   sp,=_ABTStackTop
+    20bc:	e59fd0ac 	ldr	sp, [pc, #172]	; 2170 <_reset+0x14>
+
+		MSR   CPSR_c,#MODE_FIQ|I_BIT|F_BIT	// FIQ Mode
+    20c0:	e321f0d1 	msr	CPSR_c, #209	; 0xd1
+		LDR   sp,=_FIQStackTop
+    20c4:	e59fd0a8 	ldr	sp, [pc, #168]	; 2174 <_reset+0x18>
+
+		MSR   CPSR_c,#MODE_IRQ|I_BIT|F_BIT	// IRQ Mode
+    20c8:	e321f0d2 	msr	CPSR_c, #210	; 0xd2
+		LDR   sp,=_IRQStackTop
+    20cc:	e59fd0a4 	ldr	sp, [pc, #164]	; 2178 <_reset+0x1c>
+
+		MSR   CPSR_c,#MODE_SVC|I_BIT|F_BIT	// SVC Mode
+    20d0:	e321f0d3 	msr	CPSR_c, #211	; 0xd3
+		LDR   sp,=_SVCStackTop
+    20d4:	e59fd0a0 	ldr	sp, [pc, #160]	; 217c <_reset+0x20>
+
+		MSR   CPSR_c,#MODE_USR				// User Mode
+    20d8:	e321f010 	msr	CPSR_c, #16
+		LDR   sp,=_USRStackTop
+    20dc:	e59fd09c 	ldr	sp, [pc, #156]	; 2180 <_reset+0x24>
+
+
+
+// Copy initialized data to its execution address in RAM
+// -----------------------------------------------------
+		LDR   r1,=_etext                // -> ROM data start
+    20e0:	e59f109c 	ldr	r1, [pc, #156]	; 2184 <_reset+0x28>
+		LDR   r2,=_data                 // -> data start
+    20e4:	e59f209c 	ldr	r2, [pc, #156]	; 2188 <_reset+0x2c>
+		LDR   r3,=_edata                // -> end of data
+    20e8:	e59f309c 	ldr	r3, [pc, #156]	; 218c <_reset+0x30>
+1:		CMP   r2,r3                     // check if data to move
+    20ec:	e1520003 	cmp	r2, r3
+		LDRLO r0,[r1],#4                // copy it
+    20f0:	34910004 	ldrcc	r0, [r1], #4
+		STRLO r0,[r2],#4
+    20f4:	34820004 	strcc	r0, [r2], #4
+		BLO   1b                        // loop until done
+    20f8:	3afffffb 	bcc	20ec <PLL_Loop+0x6c>
+
+
+// Clear .bss
+// ----------
+		mov   r0,#0                     // get a zero
+    20fc:	e3a00000 	mov	r0, #0
+		ldr   r1,=__bss_start           // -> bss start
+    2100:	e59f1088 	ldr	r1, [pc, #136]	; 2190 <_reset+0x34>
+		ldr   r2,=__bss_end__           // -> bss end
+    2104:	e59f2088 	ldr	r2, [pc, #136]	; 2194 <_reset+0x38>
+2:		cmp   r1,r2                     // check if data to clear
+    2108:	e1510002 	cmp	r1, r2
+		strlo r0,[r1],#4                // clear 4 bytes
+    210c:	34810004 	strcc	r0, [r1], #4
+		blo   2b                        // loop until done
+    2110:	3afffffc 	bcc	2108 <PLL_Loop+0x88>
+	Call C++ constructors (for objects in "global scope")
+	ctor loop added by Martin Thomas 4/2005 
+	based on a Anglia Design example-application for ST ARM
+*/
+
+		LDR 	r0, =__ctors_start__
+    2114:	e59f007c 	ldr	r0, [pc, #124]	; 2198 <_reset+0x3c>
+		LDR 	r1, =__ctors_end__
+    2118:	e59f107c 	ldr	r1, [pc, #124]	; 219c <_reset+0x40>
+
+0000211c <ctor_loop>:
+ctor_loop:
+		CMP 	r0, r1
+    211c:	e1500001 	cmp	r0, r1
+		BEQ 	ctor_end
+    2120:	0a000005 	beq	213c <ctor_end>
+		LDR 	r2, [r0], #4
+    2124:	e4902004 	ldr	r2, [r0], #4
+		STMFD 	sp!, {r0-r1}
+    2128:	e92d0003 	push	{r0, r1}
+		MOV 	lr, pc
+    212c:	e1a0e00f 	mov	lr, pc
+		MOV 	pc, r2
+    2130:	e1a0f002 	mov	pc, r2
+		LDMFD 	sp!, {r0-r1}
+    2134:	e8bd0003 	pop	{r0, r1}
+		B 		ctor_loop
+    2138:	eafffff7 	b	211c <ctor_loop>
+
+0000213c <ctor_end>:
+ctor_end:
+
+
+// Call main program: main(0)
+// --------------------------
+		mov   r0,#0                     // no arguments (argc = 0)
+    213c:	e3a00000 	mov	r0, #0
+		mov   r1,r0
+    2140:	e1a01000 	mov	r1, r0
+		mov   r2,r0
+    2144:	e1a02000 	mov	r2, r0
+		mov   fp,r0                     // null frame pointer
+    2148:	e1a0b000 	mov	fp, r0
+		mov   r7,r0                     // null frame pointer for thumb
+    214c:	e1a07000 	mov	r7, r0
+		ldr   r10,=main
+    2150:	e59fa048 	ldr	sl, [pc, #72]	; 21a0 <_reset+0x44>
+		mov   lr,pc
+    2154:	e1a0e00f 	mov	lr, pc
+
+/* Enter the C code, use BX instruction so as to never return */
+/* use BLX (?) main if you want to use c++ destructors below */
+
+		bx    r10                       // enter main()
+    2158:	e12fff1a 	bx	sl
+
+0000215c <_reset>:
+reset:
+exit:
+abort:
+
+
+		b     .                         // loop until reset
+    215c:	eafffffe 	b	215c <_reset>
+_start:
+start:
+_mainCRTStartup:
+
+// VPB_DIV Setup
+		LDR     R0, =VPBDIV
+    2160:	e01fc100 	.word	0xe01fc100
+		LDR     R1, =VPBDIV_Val
+		STR     R1, [R0]
+
+
+// PLL Setup
+		LDR     R0, =PLL_BASE
+    2164:	e01fc080 	.word	0xe01fc080
+		STR     R3, [R0, #PLLCON_OFS]
+		STR     R1, [R0, #PLLFEED_OFS]
+		STR     R2, [R0, #PLLFEED_OFS]
+
+// MAM Setup
+		LDR     R0, =MAM_BASE
+    2168:	e01fc000 	.word	0xe01fc000
+
+// Initialize Interrupt System
+// - Set stack location for each mode
+// -----------------------------------------------        
+		MSR   CPSR_c,#MODE_UND|I_BIT|F_BIT	// Undefined Instruction Mode
+		LDR   sp,=_UNDStackTop
+    216c:	400006a0 	.word	0x400006a0
+
+		MSR   CPSR_c,#MODE_ABT|I_BIT|F_BIT	// Abort Mode
+		LDR   sp,=_ABTStackTop
+    2170:	40000698 	.word	0x40000698
+
+		MSR   CPSR_c,#MODE_FIQ|I_BIT|F_BIT	// FIQ Mode
+		LDR   sp,=_FIQStackTop
+    2174:	40000690 	.word	0x40000690
+
+		MSR   CPSR_c,#MODE_IRQ|I_BIT|F_BIT	// IRQ Mode
+		LDR   sp,=_IRQStackTop
+    2178:	40000688 	.word	0x40000688
+
+		MSR   CPSR_c,#MODE_SVC|I_BIT|F_BIT	// SVC Mode
+		LDR   sp,=_SVCStackTop
+    217c:	40000588 	.word	0x40000588
+
+		MSR   CPSR_c,#MODE_USR				// User Mode
+		LDR   sp,=_USRStackTop
+    2180:	40000580 	.word	0x40000580
+
+
+
+// Copy initialized data to its execution address in RAM
+// -----------------------------------------------------
+		LDR   r1,=_etext                // -> ROM data start
+    2184:	00003c40 	.word	0x00003c40
+		LDR   r2,=_data                 // -> data start
+    2188:	40000000 	.word	0x40000000
+		LDR   r3,=_edata                // -> end of data
+    218c:	40000000 	.word	0x40000000
+
+
+// Clear .bss
+// ----------
+		mov   r0,#0                     // get a zero
+		ldr   r1,=__bss_start           // -> bss start
+    2190:	40000000 	.word	0x40000000
+		ldr   r2,=__bss_end__           // -> bss end
+    2194:	40000380 	.word	0x40000380
+	Call C++ constructors (for objects in "global scope")
+	ctor loop added by Martin Thomas 4/2005 
+	based on a Anglia Design example-application for ST ARM
+*/
+
+		LDR 	r0, =__ctors_start__
+    2198:	00003c40 	.word	0x00003c40
+		LDR 	r1, =__ctors_end__
+    219c:	00003c40 	.word	0x00003c40
+		mov   r0,#0                     // no arguments (argc = 0)
+		mov   r1,r0
+		mov   r2,r0
+		mov   fp,r0                     // null frame pointer
+		mov   r7,r0                     // null frame pointer for thumb
+		ldr   r10,=main
+    21a0:	000021a4 	.word	0x000021a4
+
+000021a4 <main>:
+
+
+
+// main()
+// entry point from crt0.S
+int main(void){
+    21a4:	e92d4080 	push	{r7, lr}
+    21a8:	e24dd040 	sub	sp, sp, #64	; 0x40
+	// init hardware
+	HW_Init();
+    21ac:	eb0001a3 	bl	2840 <HW_Init>
+
+	// init CAN
+	// DEFAULT BAUD RATE = 500K for CAN1 and CAN2
+	CAN_UserInit();
+    21b0:	eb0000a1 	bl	243c <CAN_UserInit>
+
+	// Set green LEDs for CAN1 and CAN2
+	HW_SetLED ( HW_LED_CAN1, HW_LED_GREEN);
+    21b4:	e3a01002 	mov	r1, #2
+    21b8:	e3a00001 	mov	r0, #1
+    21bc:	eb00011e 	bl	263c <HW_SetLED>
+	HW_SetLED ( HW_LED_CAN2, HW_LED_GREEN);
+    21c0:	e3a00002 	mov	r0, #2
+    21c4:	e1a01000 	mov	r1, r0
+    21c8:	eb00011b 	bl	263c <HW_SetLED>
+    21cc:	e59f418c 	ldr	r4, [pc, #396]	; 2360 <main+0x1bc>
+#define XPR_2C2_INTERNAL 0xCFF5642 & mask_29  //CFF5642
+
+
+static int check_IDs(u32_t id)
+{
+	if((id == SWFDBKA_D2XX) || \
+    21d0:	e59f518c 	ldr	r5, [pc, #396]	; 2364 <main+0x1c0>
+    21d4:	e59f618c 	ldr	r6, [pc, #396]	; 2368 <main+0x1c4>
+		 (id == SWFDBKB_D2XX) || \
+    21d8:	e59f718c 	ldr	r7, [pc, #396]	; 236c <main+0x1c8>
+		 (id == RQST_SC_D2XX) || \
+    21dc:	e59f818c 	ldr	r8, [pc, #396]	; 2370 <main+0x1cc>
+		 (id == SWDM_D2XX) || \
+    21e0:	e59fa18c 	ldr	sl, [pc, #396]	; 2374 <main+0x1d0>
+		 (id == SWCMD_D2XX) || \
+    21e4:	e59f918c 	ldr	r9, [pc, #396]	; 2378 <main+0x1d4>
+	CANMsg_t  RxMsg, TxMsg;
+	int id_match;
+	id_match = TRUE; // default to passing messages through, unless ID is a match
+
+	// process messages from CAN1
+	if ( CAN_UserRead ( CAN_BUS1, &RxMsg) != 0){
+    21e8:	e3a00000 	mov	r0, #0
+    21ec:	e1a0100d 	mov	r1, sp
+    21f0:	eb00007c 	bl	23e8 <CAN_UserRead>
+    21f4:	e3500000 	cmp	r0, #0
+    21f8:	0a000039 	beq	22e4 <main+0x140>
+		// Forward CAN1 to CAN2
+		u32_t masked_id = RxMsg.Id & mask_29;
+    21fc:	e59d2004 	ldr	r2, [sp, #4]
+    2200:	e3c2320e 	bic	r3, r2, #-536870912	; 0xe0000000
+#define XPR_2C2_INTERNAL 0xCFF5642 & mask_29  //CFF5642
+
+
+static int check_IDs(u32_t id)
+{
+	if((id == SWFDBKA_D2XX) || \
+    2204:	e1530005 	cmp	r3, r5
+    2208:	0a000035 	beq	22e4 <main+0x140>
+    220c:	e1530006 	cmp	r3, r6
+    2210:	0a000033 	beq	22e4 <main+0x140>
+		 (id == SWFDBKB_D2XX) || \
+    2214:	e1530007 	cmp	r3, r7
+    2218:	0a000031 	beq	22e4 <main+0x140>
+		 (id == RQST_SC_D2XX) || \
+    221c:	e1530008 	cmp	r3, r8
+    2220:	0a00002f 	beq	22e4 <main+0x140>
+		 (id == SWDM_D2XX) || \
+    2224:	e153000a 	cmp	r3, sl
+    2228:	0a00002d 	beq	22e4 <main+0x140>
+		 (id == SWCMD_D2XX) || \
+    222c:	e1530009 	cmp	r3, r9
+    2230:	0a00002b 	beq	22e4 <main+0x140>
+		 (id == SOFT_SC) || \
+    2234:	e59f1140 	ldr	r1, [pc, #320]	; 237c <main+0x1d8>
+    2238:	e1530001 	cmp	r3, r1
+    223c:	0a000028 	beq	22e4 <main+0x140>
+		 (id == DM2_SC) || \
+    2240:	e2411c01 	sub	r1, r1, #256	; 0x100
+    2244:	e1530001 	cmp	r3, r1
+    2248:	0a000025 	beq	22e4 <main+0x140>
+		 (id == DM1_SC) || \
+    224c:	e59f112c 	ldr	r1, [pc, #300]	; 2380 <main+0x1dc>
+    2250:	e1530001 	cmp	r3, r1
+    2254:	0a000022 	beq	22e4 <main+0x140>
+		 (id == HRW_2C2) || \
+    2258:	e59f1124 	ldr	r1, [pc, #292]	; 2384 <main+0x1e0>
+    225c:	e1530001 	cmp	r3, r1
+    2260:	0a00001f 	beq	22e4 <main+0x140>
+		 (id == Prop2C2) || \
+    2264:	e59f111c 	ldr	r1, [pc, #284]	; 2388 <main+0x1e4>
+    2268:	e1530001 	cmp	r3, r1
+    226c:	0a00001c 	beq	22e4 <main+0x140>
+		 (id == EBC5_2C2) || \
+    2270:	e59f1114 	ldr	r1, [pc, #276]	; 238c <main+0x1e8>
+    2274:	e1530001 	cmp	r3, r1
+    2278:	0a000019 	beq	22e4 <main+0x140>
+		 (id == EBC1_2C2) || \
+    227c:	e59f110c 	ldr	r1, [pc, #268]	; 2390 <main+0x1ec>
+    2280:	e1530001 	cmp	r3, r1
+    2284:	0a000016 	beq	22e4 <main+0x140>
+		 (id == XPR_2C2) || \
+    2288:	e2411023 	sub	r1, r1, #35	; 0x23
+    228c:	e1530001 	cmp	r3, r1
+    2290:	0a000013 	beq	22e4 <main+0x140>
+		id_match = check_IDs(masked_id);
+		if(!id_match){ // if not a match to an ID in the blacklist, then forward it
+			// copy message
+			TxMsg.Id   = RxMsg.Id;
+			TxMsg.Type = RxMsg.Type;
+			TxMsg.Len  = RxMsg.Len;
+    2294:	e5dd3003 	ldrb	r3, [sp, #3]
+    2298:	e5cd3013 	strb	r3, [sp, #19]
+			TxMsg.Data32[0]	= RxMsg.Data32[0];
+    229c:	e59d3008 	ldr	r3, [sp, #8]
+		u32_t masked_id = RxMsg.Id & mask_29;
+		id_match = check_IDs(masked_id);
+		if(!id_match){ // if not a match to an ID in the blacklist, then forward it
+			// copy message
+			TxMsg.Id   = RxMsg.Id;
+			TxMsg.Type = RxMsg.Type;
+    22a0:	e5ddc002 	ldrb	ip, [sp, #2]
+			TxMsg.Len  = RxMsg.Len;
+			TxMsg.Data32[0]	= RxMsg.Data32[0];
+    22a4:	e58d3018 	str	r3, [sp, #24]
+			TxMsg.Data32[1]	= RxMsg.Data32[1];
+    22a8:	e59d300c 	ldr	r3, [sp, #12]
+
+			// send
+			CAN_UserWrite ( CAN_BUS2, &TxMsg);
+    22ac:	e3a00001 	mov	r0, #1
+    22b0:	e28d1010 	add	r1, sp, #16
+			// copy message
+			TxMsg.Id   = RxMsg.Id;
+			TxMsg.Type = RxMsg.Type;
+			TxMsg.Len  = RxMsg.Len;
+			TxMsg.Data32[0]	= RxMsg.Data32[0];
+			TxMsg.Data32[1]	= RxMsg.Data32[1];
+    22b4:	e58d301c 	str	r3, [sp, #28]
+		// Forward CAN1 to CAN2
+		u32_t masked_id = RxMsg.Id & mask_29;
+		id_match = check_IDs(masked_id);
+		if(!id_match){ // if not a match to an ID in the blacklist, then forward it
+			// copy message
+			TxMsg.Id   = RxMsg.Id;
+    22b8:	e58d2014 	str	r2, [sp, #20]
+			TxMsg.Type = RxMsg.Type;
+    22bc:	e5cdc012 	strb	ip, [sp, #18]
+			TxMsg.Len  = RxMsg.Len;
+			TxMsg.Data32[0]	= RxMsg.Data32[0];
+			TxMsg.Data32[1]	= RxMsg.Data32[1];
+
+			// send
+			CAN_UserWrite ( CAN_BUS2, &TxMsg);
+    22c0:	eb000033 	bl	2394 <CAN_UserWrite>
+
+			// Toggle LEDs
+			CAN2_LED_Toggle ^= 1;
+    22c4:	e5d43001 	ldrb	r3, [r4, #1]
+    22c8:	e2233001 	eor	r3, r3, #1
+			if ( CAN2_LED_Toggle ){
+    22cc:	e3530000 	cmp	r3, #0
+
+			// send
+			CAN_UserWrite ( CAN_BUS2, &TxMsg);
+
+			// Toggle LEDs
+			CAN2_LED_Toggle ^= 1;
+    22d0:	e5c43001 	strb	r3, [r4, #1]
+			if ( CAN2_LED_Toggle ){
+    22d4:	1a00001d 	bne	2350 <main+0x1ac>
+				HW_SetLED ( HW_LED_CAN2, HW_LED_OFF);
+			}else{
+				HW_SetLED ( HW_LED_CAN2, HW_LED_ORANGE);
+    22d8:	e3a00002 	mov	r0, #2
+    22dc:	e3a01003 	mov	r1, #3
+    22e0:	eb0000d5 	bl	263c <HW_SetLED>
+*/
+static void CAN2_to_CAN1(void){
+	CANMsg_t  RxMsg, TxMsg;
+
+	// process messages from CAN1
+	if ( CAN_UserRead ( CAN_BUS2, &RxMsg) != 0){
+    22e4:	e3a00001 	mov	r0, #1
+    22e8:	e28d1020 	add	r1, sp, #32
+    22ec:	eb00003d 	bl	23e8 <CAN_UserRead>
+    22f0:	e3500000 	cmp	r0, #0
+    22f4:	0affffbb 	beq	21e8 <main+0x44>
+		// Forward CAN1 to CAN2
+		TxMsg.Id   = RxMsg.Id;
+		TxMsg.Type = RxMsg.Type;
+		TxMsg.Len  = RxMsg.Len;
+    22f8:	e5dd3023 	ldrb	r3, [sp, #35]	; 0x23
+    22fc:	e5cd3033 	strb	r3, [sp, #51]	; 0x33
+		TxMsg.Data32[0]	= RxMsg.Data32[0];
+    2300:	e59d3028 	ldr	r3, [sp, #40]	; 0x28
+
+	// process messages from CAN1
+	if ( CAN_UserRead ( CAN_BUS2, &RxMsg) != 0){
+		// Forward CAN1 to CAN2
+		TxMsg.Id   = RxMsg.Id;
+		TxMsg.Type = RxMsg.Type;
+    2304:	e5dd2022 	ldrb	r2, [sp, #34]	; 0x22
+	CANMsg_t  RxMsg, TxMsg;
+
+	// process messages from CAN1
+	if ( CAN_UserRead ( CAN_BUS2, &RxMsg) != 0){
+		// Forward CAN1 to CAN2
+		TxMsg.Id   = RxMsg.Id;
+    2308:	e59dc024 	ldr	ip, [sp, #36]	; 0x24
+		TxMsg.Type = RxMsg.Type;
+		TxMsg.Len  = RxMsg.Len;
+		TxMsg.Data32[0]	= RxMsg.Data32[0];
+    230c:	e58d3038 	str	r3, [sp, #56]	; 0x38
+		TxMsg.Data32[1]	= RxMsg.Data32[1];
+    2310:	e59d302c 	ldr	r3, [sp, #44]	; 0x2c
+
+
+		// send
+		CAN_UserWrite ( CAN_BUS1, &TxMsg);
+    2314:	e28d1030 	add	r1, sp, #48	; 0x30
+    2318:	e3a00000 	mov	r0, #0
+		// Forward CAN1 to CAN2
+		TxMsg.Id   = RxMsg.Id;
+		TxMsg.Type = RxMsg.Type;
+		TxMsg.Len  = RxMsg.Len;
+		TxMsg.Data32[0]	= RxMsg.Data32[0];
+		TxMsg.Data32[1]	= RxMsg.Data32[1];
+    231c:	e58d303c 	str	r3, [sp, #60]	; 0x3c
+	CANMsg_t  RxMsg, TxMsg;
+
+	// process messages from CAN1
+	if ( CAN_UserRead ( CAN_BUS2, &RxMsg) != 0){
+		// Forward CAN1 to CAN2
+		TxMsg.Id   = RxMsg.Id;
+    2320:	e58dc034 	str	ip, [sp, #52]	; 0x34
+		TxMsg.Type = RxMsg.Type;
+    2324:	e5cd2032 	strb	r2, [sp, #50]	; 0x32
+		TxMsg.Data32[0]	= RxMsg.Data32[0];
+		TxMsg.Data32[1]	= RxMsg.Data32[1];
+
+
+		// send
+		CAN_UserWrite ( CAN_BUS1, &TxMsg);
+    2328:	eb000019 	bl	2394 <CAN_UserWrite>
+
+		// Toggle LEDs
+		CAN1_LED_Toggle ^= 1;
+    232c:	e5d43000 	ldrb	r3, [r4]
+    2330:	e2233001 	eor	r3, r3, #1
+		if ( CAN1_LED_Toggle ){
+    2334:	e3530000 	cmp	r3, #0
+			HW_SetLED ( HW_LED_CAN1, HW_LED_OFF);
+    2338:	13a01000 	movne	r1, #0
+		} else{
+			HW_SetLED ( HW_LED_CAN1, HW_LED_ORANGE);
+    233c:	03a01003 	moveq	r1, #3
+    2340:	e3a00001 	mov	r0, #1
+
+		// send
+		CAN_UserWrite ( CAN_BUS1, &TxMsg);
+
+		// Toggle LEDs
+		CAN1_LED_Toggle ^= 1;
+    2344:	e5c43000 	strb	r3, [r4]
+		if ( CAN1_LED_Toggle ){
+			HW_SetLED ( HW_LED_CAN1, HW_LED_OFF);
+		} else{
+			HW_SetLED ( HW_LED_CAN1, HW_LED_ORANGE);
+    2348:	eb0000bb 	bl	263c <HW_SetLED>
+    234c:	eaffffa5 	b	21e8 <main+0x44>
+			CAN_UserWrite ( CAN_BUS2, &TxMsg);
+
+			// Toggle LEDs
+			CAN2_LED_Toggle ^= 1;
+			if ( CAN2_LED_Toggle ){
+				HW_SetLED ( HW_LED_CAN2, HW_LED_OFF);
+    2350:	e3a01000 	mov	r1, #0
+    2354:	e3a00002 	mov	r0, #2
+    2358:	eb0000b7 	bl	263c <HW_SetLED>
+    235c:	eaffffe0 	b	22e4 <main+0x140>
+    2360:	40000000 	.word	0x40000000
+    2364:	18fff013 	.word	0x18fff013
+    2368:	18fff113 	.word	0x18fff113
+    236c:	18eafff9 	.word	0x18eafff9
+    2370:	18fff713 	.word	0x18fff713
+    2374:	18ffef65 	.word	0x18ffef65
+    2378:	18feda13 	.word	0x18feda13
+    237c:	18fecb13 	.word	0x18fecb13
+    2380:	08fe6e30 	.word	0x08fe6e30
+    2384:	18ff4330 	.word	0x18ff4330
+    2388:	18fdc430 	.word	0x18fdc430
+    238c:	18f00130 	.word	0x18f00130
+    2390:	0cff5665 	.word	0x0cff5665
+
+00002394 <CAN_UserWrite>:
+
+
+// CAN_UserWrite()
+// Send a message on CAN_BUSx
+CANStatus_t  CAN_UserWrite ( CANHandle_t  hBus, CANMsg_t  *pBuff)
+{
+    2394:	e92d4038 	push	{r3, r4, r5, lr}
+    2398:	e1a05000 	mov	r5, r0
+    239c:	e1a04001 	mov	r4, r1
+	CANMsg_t  *pMsg;
+
+
+	ret = CAN_ERR_OK;
+
+	pMsg = CAN_TxQueueGetNext ( hBus);
+    23a0:	eb000265 	bl	2d3c <CAN_TxQueueGetNext>
+
+	if ( pMsg != NULL)
+    23a4:	e2503000 	subs	r3, r0, #0
+	}
+
+	else
+	{
+		// Tx Queue FULL
+		ret = CAN_ERR_FAIL;
+    23a8:	01a00003 	moveq	r0, r3
+
+	ret = CAN_ERR_OK;
+
+	pMsg = CAN_TxQueueGetNext ( hBus);
+
+	if ( pMsg != NULL)
+    23ac:	0a00000b 	beq	23e0 <CAN_UserWrite+0x4c>
+	{
+		pMsg->Id   = pBuff->Id;
+		pMsg->Len  = pBuff->Len;
+		pMsg->Type = pBuff->Type;
+
+		pMsg->Data32[0] = pBuff->Data32[0];
+    23b0:	e5942008 	ldr	r2, [r4, #8]
+    23b4:	e5832008 	str	r2, [r3, #8]
+	pMsg = CAN_TxQueueGetNext ( hBus);
+
+	if ( pMsg != NULL)
+	{
+		pMsg->Id   = pBuff->Id;
+		pMsg->Len  = pBuff->Len;
+    23b8:	e5d40003 	ldrb	r0, [r4, #3]
+
+	pMsg = CAN_TxQueueGetNext ( hBus);
+
+	if ( pMsg != NULL)
+	{
+		pMsg->Id   = pBuff->Id;
+    23bc:	e594c004 	ldr	ip, [r4, #4]
+		pMsg->Len  = pBuff->Len;
+		pMsg->Type = pBuff->Type;
+    23c0:	e5d41002 	ldrb	r1, [r4, #2]
+
+		pMsg->Data32[0] = pBuff->Data32[0];
+		pMsg->Data32[1] = pBuff->Data32[1];
+    23c4:	e594200c 	ldr	r2, [r4, #12]
+	pMsg = CAN_TxQueueGetNext ( hBus);
+
+	if ( pMsg != NULL)
+	{
+		pMsg->Id   = pBuff->Id;
+		pMsg->Len  = pBuff->Len;
+    23c8:	e5c30003 	strb	r0, [r3, #3]
+
+	pMsg = CAN_TxQueueGetNext ( hBus);
+
+	if ( pMsg != NULL)
+	{
+		pMsg->Id   = pBuff->Id;
+    23cc:	e583c004 	str	ip, [r3, #4]
+		pMsg->Len  = pBuff->Len;
+		pMsg->Type = pBuff->Type;
+    23d0:	e5c31002 	strb	r1, [r3, #2]
+
+		pMsg->Data32[0] = pBuff->Data32[0];
+		pMsg->Data32[1] = pBuff->Data32[1];
+    23d4:	e583200c 	str	r2, [r3, #12]
+
+		// Send Msg
+		ret = CAN_TxQueueWriteNext ( hBus);
+    23d8:	e1a00005 	mov	r0, r5
+    23dc:	eb00027f 	bl	2de0 <CAN_TxQueueWriteNext>
+		// Tx Queue FULL
+		ret = CAN_ERR_FAIL;
+	}
+
+	return ret;
+}
+    23e0:	e8bd4038 	pop	{r3, r4, r5, lr}
+    23e4:	e12fff1e 	bx	lr
+
+000023e8 <CAN_UserRead>:
+
+
+// CAN_UserRead()
+// read message from CAN_BUSx
+u32_t  CAN_UserRead ( CANHandle_t  hBus, CANMsg_t  *pBuff)
+{
+    23e8:	e92d4038 	push	{r3, r4, r5, lr}
+    23ec:	e1a05000 	mov	r5, r0
+    23f0:	e1a04001 	mov	r4, r1
+	CANMsg_t  *pMsg;
+
+
+	ret = 0;
+
+	pMsg = CAN_RxQueueGetNext ( hBus);
+    23f4:	eb000264 	bl	2d8c <CAN_RxQueueGetNext>
+
+	if ( pMsg != NULL)
+    23f8:	e3500000 	cmp	r0, #0
+    23fc:	0a00000c 	beq	2434 <CAN_UserRead+0x4c>
+	{
+		pBuff->Id   = pMsg->Id;
+		pBuff->Len  = pMsg->Len;
+		pBuff->Type = pMsg->Type;
+
+		pBuff->Data32[0] = pMsg->Data32[0];
+    2400:	e5902008 	ldr	r2, [r0, #8]
+    2404:	e5842008 	str	r2, [r4, #8]
+
+	pMsg = CAN_RxQueueGetNext ( hBus);
+
+	if ( pMsg != NULL)
+	{
+		pBuff->Id   = pMsg->Id;
+    2408:	e590c004 	ldr	ip, [r0, #4]
+		pBuff->Len  = pMsg->Len;
+    240c:	e5d01003 	ldrb	r1, [r0, #3]
+		pBuff->Type = pMsg->Type;
+    2410:	e5d02002 	ldrb	r2, [r0, #2]
+
+		pBuff->Data32[0] = pMsg->Data32[0];
+		pBuff->Data32[1] = pMsg->Data32[1];
+    2414:	e590300c 	ldr	r3, [r0, #12]
+
+	pMsg = CAN_RxQueueGetNext ( hBus);
+
+	if ( pMsg != NULL)
+	{
+		pBuff->Id   = pMsg->Id;
+    2418:	e584c004 	str	ip, [r4, #4]
+		pBuff->Len  = pMsg->Len;
+    241c:	e5c41003 	strb	r1, [r4, #3]
+		pBuff->Type = pMsg->Type;
+    2420:	e5c42002 	strb	r2, [r4, #2]
+
+		pBuff->Data32[0] = pMsg->Data32[0];
+		pBuff->Data32[1] = pMsg->Data32[1];
+    2424:	e584300c 	str	r3, [r4, #12]
+
+		CAN_RxQueueReadNext ( hBus);
+    2428:	e1a00005 	mov	r0, r5
+    242c:	eb0002b2 	bl	2efc <CAN_RxQueueReadNext>
+		ret = 1;
+    2430:	e3a00001 	mov	r0, #1
+	else {
+		ret = CAN_ERR_FAIL;
+	}
+
+	return ret;
+}
+    2434:	e8bd4038 	pop	{r3, r4, r5, lr}
+    2438:	e12fff1e 	bx	lr
+
+0000243c <CAN_UserInit>:
+
+
+
+// CAN_UserInit()
+// initialize CAN1 and CAN2
+void  CAN_UserInit (void){
+    243c:	e92d4038 	push	{r3, r4, r5, lr}
+	// init CAN1
+
+	CAN_ReferenceTxQueue ( CAN_BUS1, &TxQueueCAN1[0], CAN1_TX_QUEUE_SIZE);				// Reference above Arrays as Queues
+    2440:	e59f11a0 	ldr	r1, [pc, #416]	; 25e8 <CAN_UserInit+0x1ac>
+    2444:	e3a02008 	mov	r2, #8
+    2448:	e3a00000 	mov	r0, #0
+    244c:	eb0001a8 	bl	2af4 <CAN_ReferenceTxQueue>
+	CAN_ReferenceRxQueue ( CAN_BUS1, &RxQueueCAN1[0], CAN1_RX_QUEUE_SIZE);
+    2450:	e3a02010 	mov	r2, #16
+    2454:	e59f1190 	ldr	r1, [pc, #400]	; 25ec <CAN_UserInit+0x1b0>
+    2458:	e3a00000 	mov	r0, #0
+    245c:	eb0001b7 	bl	2b40 <CAN_ReferenceRxQueue>
+
+	CAN_SetTimestampHandler ( CAN_BUS1, NULL);
+    2460:	e3a00000 	mov	r0, #0
+    2464:	e1a01000 	mov	r1, r0
+    2468:	eb0001e1 	bl	2bf4 <CAN_SetTimestampHandler>
+
+	VICVectAddr1 = (u32_t) CAN_GetIsrVector ( CAN1_TX_INTSOURCE);
+    246c:	e3a00014 	mov	r0, #20
+    2470:	eb0001c4 	bl	2b88 <CAN_GetIsrVector>
+    2474:	e3e04000 	mvn	r4, #0
+    2478:	e1a03000 	mov	r3, r0
+    247c:	e5043efb 	str	r3, [r4, #-3835]	; 0xefb
+	VICVectAddr3 = (u32_t) CAN_GetIsrVector ( CAN1_RX_INTSOURCE);
+    2480:	e3a0001a 	mov	r0, #26
+    2484:	eb0001bf 	bl	2b88 <CAN_GetIsrVector>
+    2488:	e1a03000 	mov	r3, r0
+    248c:	e5043ef3 	str	r3, [r4, #-3827]	; 0xef3
+
+	VICVectCntl1 = 1 << 5 | CAN1_TX_INTSOURCE;											// Setup VIC
+    2490:	e3a03034 	mov	r3, #52	; 0x34
+    2494:	e5043dfb 	str	r3, [r4, #-3579]	; 0xdfb
+	VICVectCntl3 = 1 << 5 | CAN1_RX_INTSOURCE;
+    2498:	e3a0303a 	mov	r3, #58	; 0x3a
+    249c:	e5043df3 	str	r3, [r4, #-3571]	; 0xdf3
+
+	VICIntEnable = 1 << CAN1_TX_INTSOURCE | 1 << CAN1_RX_INTSOURCE;
+    24a0:	e3a03641 	mov	r3, #68157440	; 0x4100000
+    24a4:	e5043fef 	str	r3, [r4, #-4079]	; 0xfef
+
+	CAN_SetErrorLimit ( CAN_BUS1, STD_TX_ERRORLIMIT);
+    24a8:	e3a01060 	mov	r1, #96	; 0x60
+    24ac:	e3a00000 	mov	r0, #0
+    24b0:	eb0001d8 	bl	2c18 <CAN_SetErrorLimit>
+
+	CAN_SetTxErrorCallback ( CAN_BUS1, NULL);											// Set ErrorLimit & Callbacks
+    24b4:	e3a00000 	mov	r0, #0
+    24b8:	e1a01000 	mov	r1, r0
+    24bc:	eb0001f8 	bl	2ca4 <CAN_SetTxErrorCallback>
+	CAN_SetRxCallback ( CAN_BUS1, NULL);
+    24c0:	e3a00000 	mov	r0, #0
+    24c4:	e1a01000 	mov	r1, r0
+    24c8:	eb0001db 	bl	2c3c <CAN_SetRxCallback>
+
+	CAN_SetChannelInfo ( CAN_BUS1, NULL);													// Textinfo is NULL
+    24cc:	e3a00000 	mov	r0, #0
+    24d0:	e1a01000 	mov	r1, r0
+    24d4:	eb0001e1 	bl	2c60 <CAN_SetChannelInfo>
+
+
+	// init CAN2
+
+	CAN_ReferenceTxQueue ( CAN_BUS2, &TxQueueCAN2[0], CAN2_TX_QUEUE_SIZE);
+    24d8:	e59f1110 	ldr	r1, [pc, #272]	; 25f0 <CAN_UserInit+0x1b4>
+    24dc:	e3a02008 	mov	r2, #8
+    24e0:	e3a00001 	mov	r0, #1
+    24e4:	eb000182 	bl	2af4 <CAN_ReferenceTxQueue>
+	CAN_ReferenceRxQueue ( CAN_BUS2, &RxQueueCAN2[0], CAN2_RX_QUEUE_SIZE);				// See above
+    24e8:	e3a02010 	mov	r2, #16
+    24ec:	e59f1100 	ldr	r1, [pc, #256]	; 25f4 <CAN_UserInit+0x1b8>
+    24f0:	e3a00001 	mov	r0, #1
+    24f4:	eb000191 	bl	2b40 <CAN_ReferenceRxQueue>
+
+	CAN_SetTimestampHandler ( CAN_BUS2, NULL);
+    24f8:	e3a01000 	mov	r1, #0
+    24fc:	e3a00001 	mov	r0, #1
+    2500:	eb0001bb 	bl	2bf4 <CAN_SetTimestampHandler>
+
+	VICVectAddr2 = (u32_t) CAN_GetIsrVector ( CAN2_TX_INTSOURCE);
+    2504:	e3a00015 	mov	r0, #21
+    2508:	eb00019e 	bl	2b88 <CAN_GetIsrVector>
+    250c:	e1a03000 	mov	r3, r0
+    2510:	e5043ef7 	str	r3, [r4, #-3831]	; 0xef7
+	VICVectAddr4 = (u32_t) CAN_GetIsrVector ( CAN2_RX_INTSOURCE);
+    2514:	e3a0001b 	mov	r0, #27
+    2518:	eb00019a 	bl	2b88 <CAN_GetIsrVector>
+    251c:	e1a03000 	mov	r3, r0
+    2520:	e5043eef 	str	r3, [r4, #-3823]	; 0xeef
+
+	VICVectCntl2 = 1 << 5 | CAN2_TX_INTSOURCE;
+    2524:	e3a03035 	mov	r3, #53	; 0x35
+    2528:	e5043df7 	str	r3, [r4, #-3575]	; 0xdf7
+	VICVectCntl4 = 1 << 5 | CAN2_RX_INTSOURCE;
+    252c:	e3a0303b 	mov	r3, #59	; 0x3b
+    2530:	e5043def 	str	r3, [r4, #-3567]	; 0xdef
+
+	VICIntEnable = 1 << CAN2_TX_INTSOURCE | 1 << CAN2_RX_INTSOURCE;
+    2534:	e3a03682 	mov	r3, #136314880	; 0x8200000
+    2538:	e5043fef 	str	r3, [r4, #-4079]	; 0xfef
+
+	CAN_SetErrorLimit ( CAN_BUS2, STD_TX_ERRORLIMIT);
+    253c:	e3a01060 	mov	r1, #96	; 0x60
+    2540:	e3a00001 	mov	r0, #1
+    2544:	eb0001b3 	bl	2c18 <CAN_SetErrorLimit>
+
+	CAN_SetTxErrorCallback ( CAN_BUS2, NULL);
+    2548:	e3a01000 	mov	r1, #0
+    254c:	e3a00001 	mov	r0, #1
+    2550:	eb0001d3 	bl	2ca4 <CAN_SetTxErrorCallback>
+	CAN_SetRxCallback ( CAN_BUS2, NULL);
+    2554:	e3a01000 	mov	r1, #0
+    2558:	e3a00001 	mov	r0, #1
+    255c:	eb0001b6 	bl	2c3c <CAN_SetRxCallback>
+
+	CAN_SetChannelInfo ( CAN_BUS2, NULL);
+    2560:	e3a01000 	mov	r1, #0
+    2564:	e3a00001 	mov	r0, #1
+    2568:	eb0001bc 	bl	2c60 <CAN_SetChannelInfo>
+
+
+	// Set Error Handler
+
+	VICVectAddr0 = (u32_t) CAN_GetIsrVector ( GLOBAL_CAN_INTSOURCE);
+    256c:	e3a00013 	mov	r0, #19
+    2570:	eb000184 	bl	2b88 <CAN_GetIsrVector>
+	VICVectCntl0 = 1 << 5 | GLOBAL_CAN_INTSOURCE;
+    2574:	e3a03033 	mov	r3, #51	; 0x33
+	CAN_SetChannelInfo ( CAN_BUS2, NULL);
+
+
+	// Set Error Handler
+
+	VICVectAddr0 = (u32_t) CAN_GetIsrVector ( GLOBAL_CAN_INTSOURCE);
+    2578:	e5040eff 	str	r0, [r4, #-3839]	; 0xeff
+	VICVectCntl0 = 1 << 5 | GLOBAL_CAN_INTSOURCE;
+    257c:	e5043dff 	str	r3, [r4, #-3583]	; 0xdff
+	VICIntEnable = 1 << GLOBAL_CAN_INTSOURCE;
+    2580:	e3a03702 	mov	r3, #524288	; 0x80000
+    2584:	e5043fef 	str	r3, [r4, #-4079]	; 0xfef
+	CAN_SetFilterMode ( AF_ON_BYPASS_ON);				// No Filters ( Bypassed)
+
+
+	// init CAN1 and CAN2 with Values above
+
+	CAN_InitChannel ( CAN_BUS1, CAN_BAUD_500K);
+    2588:	e59f5068 	ldr	r5, [pc, #104]	; 25f8 <CAN_UserInit+0x1bc>
+	VICIntEnable = 1 << GLOBAL_CAN_INTSOURCE;
+
+
+	// Setup Filters
+
+	CAN_InitFilters();										// Clear Filter LUT
+    258c:	eb00043f 	bl	3690 <CAN_InitFilters>
+	CAN_SetFilterMode ( AF_ON_BYPASS_ON);				// No Filters ( Bypassed)
+    2590:	e3a00002 	mov	r0, #2
+    2594:	eb000435 	bl	3670 <CAN_SetFilterMode>
+
+
+	// init CAN1 and CAN2 with Values above
+
+	CAN_InitChannel ( CAN_BUS1, CAN_BAUD_500K);
+    2598:	e1a01005 	mov	r1, r5
+    259c:	e3a00000 	mov	r0, #0
+    25a0:	eb000461 	bl	372c <CAN_InitChannel>
+	CAN_InitChannel ( CAN_BUS2, CAN_BAUD_500K);
+    25a4:	e1a01005 	mov	r1, r5
+    25a8:	e3a00001 	mov	r0, #1
+    25ac:	eb00045e 	bl	372c <CAN_InitChannel>
+
+
+	//
+	CAN_SetTransceiverMode ( CAN_BUS1, CAN_TRANSCEIVER_MODE_NORMAL);
+    25b0:	e3a00000 	mov	r0, #0
+    25b4:	e1a01000 	mov	r1, r0
+    25b8:	eb00027b 	bl	2fac <CAN_SetTransceiverMode>
+	CAN_SetTransceiverMode ( CAN_BUS2, CAN_TRANSCEIVER_MODE_NORMAL);
+    25bc:	e3a01000 	mov	r1, #0
+    25c0:	e3a00001 	mov	r0, #1
+    25c4:	eb000278 	bl	2fac <CAN_SetTransceiverMode>
+
+
+	// Busses on
+
+	CAN_SetBusMode ( CAN_BUS1, BUS_ON);					// CAN Bus On
+    25c8:	e3a00000 	mov	r0, #0
+    25cc:	e1a01000 	mov	r1, r0
+    25d0:	eb0001bc 	bl	2cc8 <CAN_SetBusMode>
+	CAN_SetBusMode ( CAN_BUS2, BUS_ON);
+    25d4:	e3a01000 	mov	r1, #0
+    25d8:	e3a00001 	mov	r0, #1
+    25dc:	eb0001b9 	bl	2cc8 <CAN_SetBusMode>
+
+}
+    25e0:	e8bd4038 	pop	{r3, r4, r5, lr}
+    25e4:	e12fff1e 	bx	lr
+    25e8:	40000200 	.word	0x40000200
+    25ec:	40000280 	.word	0x40000280
+    25f0:	40000180 	.word	0x40000180
+    25f4:	40000080 	.word	0x40000080
+    25f8:	002a0007 	.word	0x002a0007
+
+000025fc <DefaultISR>:
+    25fc:	e92d000c 	push	{r2, r3}
+    2600:	e3a02000 	mov	r2, #0
+    2604:	e3e03000 	mvn	r3, #0
+    2608:	e5032fcf 	str	r2, [r3, #-4047]	; 0xfcf
+    260c:	e8bd000c 	pop	{r2, r3}
+    2610:	e25ef004 	subs	pc, lr, #4
+
+00002614 <HW_GetModuleID>:
+    2614:	e3500000 	cmp	r0, #0
+    2618:	159f3018 	ldrne	r3, [pc, #24]	; 2638 <HW_GetModuleID+0x24>
+    261c:	15933000 	ldrne	r3, [r3]
+    2620:	11a03223 	lsrne	r3, r3, #4
+    2624:	1203300f 	andne	r3, r3, #15
+    2628:	15c03000 	strbne	r3, [r0]
+    262c:	03a00001 	moveq	r0, #1
+    2630:	13a00000 	movne	r0, #0
+    2634:	e12fff1e 	bx	lr
+    2638:	e0028000 	.word	0xe0028000
+
+0000263c <HW_SetLED>:
+    263c:	e3500001 	cmp	r0, #1
+    2640:	0a000009 	beq	266c <HW_SetLED+0x30>
+    2644:	e3500002 	cmp	r0, #2
+    2648:	13a00002 	movne	r0, #2
+    264c:	112fff1e 	bxne	lr
+    2650:	e3510003 	cmp	r1, #3
+    2654:	979ff101 	ldrls	pc, [pc, r1, lsl #2]
+    2658:	ea000048 	b	2780 <HW_SetLED+0x144>
+    265c:	00002768 	.word	0x00002768
+    2660:	00002744 	.word	0x00002744
+    2664:	00002720 	.word	0x00002720
+    2668:	00002708 	.word	0x00002708
+    266c:	e3510003 	cmp	r1, #3
+    2670:	979ff101 	ldrls	pc, [pc, r1, lsl #2]
+    2674:	ea000021 	b	2700 <HW_SetLED+0xc4>
+    2678:	000026e8 	.word	0x000026e8
+    267c:	000026c4 	.word	0x000026c4
+    2680:	000026a0 	.word	0x000026a0
+    2684:	00002688 	.word	0x00002688
+    2688:	e59f30f8 	ldr	r3, [pc, #248]	; 2788 <HW_SetLED+0x14c>
+    268c:	e5932018 	ldr	r2, [r3, #24]
+    2690:	e3822803 	orr	r2, r2, #196608	; 0x30000
+    2694:	e5832018 	str	r2, [r3, #24]
+    2698:	e3a00000 	mov	r0, #0
+    269c:	e12fff1e 	bx	lr
+    26a0:	e59f30e0 	ldr	r3, [pc, #224]	; 2788 <HW_SetLED+0x14c>
+    26a4:	e5932018 	ldr	r2, [r3, #24]
+    26a8:	e3822802 	orr	r2, r2, #131072	; 0x20000
+    26ac:	e5832018 	str	r2, [r3, #24]
+    26b0:	e5932018 	ldr	r2, [r3, #24]
+    26b4:	e3c22801 	bic	r2, r2, #65536	; 0x10000
+    26b8:	e5832018 	str	r2, [r3, #24]
+    26bc:	e3a00000 	mov	r0, #0
+    26c0:	e12fff1e 	bx	lr
+    26c4:	e59f30bc 	ldr	r3, [pc, #188]	; 2788 <HW_SetLED+0x14c>
+    26c8:	e5932018 	ldr	r2, [r3, #24]
+    26cc:	e3822801 	orr	r2, r2, #65536	; 0x10000
+    26d0:	e5832018 	str	r2, [r3, #24]
+    26d4:	e5932018 	ldr	r2, [r3, #24]
+    26d8:	e3c22802 	bic	r2, r2, #131072	; 0x20000
+    26dc:	e5832018 	str	r2, [r3, #24]
+    26e0:	e3a00000 	mov	r0, #0
+    26e4:	e12fff1e 	bx	lr
+    26e8:	e59f3098 	ldr	r3, [pc, #152]	; 2788 <HW_SetLED+0x14c>
+    26ec:	e5932018 	ldr	r2, [r3, #24]
+    26f0:	e3c22803 	bic	r2, r2, #196608	; 0x30000
+    26f4:	e5832018 	str	r2, [r3, #24]
+    26f8:	e3a00000 	mov	r0, #0
+    26fc:	e12fff1e 	bx	lr
+    2700:	e3a00001 	mov	r0, #1
+    2704:	e12fff1e 	bx	lr
+    2708:	e59f3078 	ldr	r3, [pc, #120]	; 2788 <HW_SetLED+0x14c>
+    270c:	e5932018 	ldr	r2, [r3, #24]
+    2710:	e3822703 	orr	r2, r2, #786432	; 0xc0000
+    2714:	e5832018 	str	r2, [r3, #24]
+    2718:	e3a00000 	mov	r0, #0
+    271c:	e12fff1e 	bx	lr
+    2720:	e59f3060 	ldr	r3, [pc, #96]	; 2788 <HW_SetLED+0x14c>
+    2724:	e5932018 	ldr	r2, [r3, #24]
+    2728:	e3822702 	orr	r2, r2, #524288	; 0x80000
+    272c:	e5832018 	str	r2, [r3, #24]
+    2730:	e5932018 	ldr	r2, [r3, #24]
+    2734:	e3c22701 	bic	r2, r2, #262144	; 0x40000
+    2738:	e5832018 	str	r2, [r3, #24]
+    273c:	e3a00000 	mov	r0, #0
+    2740:	e12fff1e 	bx	lr
+    2744:	e59f303c 	ldr	r3, [pc, #60]	; 2788 <HW_SetLED+0x14c>
+    2748:	e5932018 	ldr	r2, [r3, #24]
+    274c:	e3822701 	orr	r2, r2, #262144	; 0x40000
+    2750:	e5832018 	str	r2, [r3, #24]
+    2754:	e5932018 	ldr	r2, [r3, #24]
+    2758:	e3c22702 	bic	r2, r2, #524288	; 0x80000
+    275c:	e5832018 	str	r2, [r3, #24]
+    2760:	e3a00000 	mov	r0, #0
+    2764:	e12fff1e 	bx	lr
+    2768:	e59f3018 	ldr	r3, [pc, #24]	; 2788 <HW_SetLED+0x14c>
+    276c:	e5932018 	ldr	r2, [r3, #24]
+    2770:	e3c22703 	bic	r2, r2, #786432	; 0xc0000
+    2774:	e5832018 	str	r2, [r3, #24]
+    2778:	e3a00000 	mov	r0, #0
+    277c:	e12fff1e 	bx	lr
+    2780:	e3a00001 	mov	r0, #1
+    2784:	e12fff1e 	bx	lr
+    2788:	e0028000 	.word	0xe0028000
+
+0000278c <HW_GetDIN>:
+    278c:	e3500000 	cmp	r0, #0
+    2790:	0a000007 	beq	27b4 <HW_GetDIN+0x28>
+    2794:	e59f3020 	ldr	r3, [pc, #32]	; 27bc <HW_GetDIN+0x30>
+    2798:	e5933000 	ldr	r3, [r3]
+    279c:	e3130702 	tst	r3, #524288	; 0x80000
+    27a0:	13a03000 	movne	r3, #0
+    27a4:	03a03001 	moveq	r3, #1
+    27a8:	e5803000 	str	r3, [r0]
+    27ac:	e3a00000 	mov	r0, #0
+    27b0:	e12fff1e 	bx	lr
+    27b4:	e3a00001 	mov	r0, #1
+    27b8:	e12fff1e 	bx	lr
+    27bc:	e0028000 	.word	0xe0028000
+
+000027c0 <HW_JumpToBootloader>:
+    27c0:	e59f1068 	ldr	r1, [pc, #104]	; 2830 <HW_JumpToBootloader+0x70>
+    27c4:	e3a02001 	mov	r2, #1
+    27c8:	e92d4008 	push	{r3, lr}
+    27cc:	e5812000 	str	r2, [r1]
+    27d0:	e3e03000 	mvn	r3, #0
+    27d4:	e2811901 	add	r1, r1, #16384	; 0x4000
+    27d8:	e5812000 	str	r2, [r1]
+    27dc:	e5033feb 	str	r3, [r3, #-4075]	; 0xfeb
+    27e0:	e1a00000 	nop			; (mov r0, r0)
+    27e4:	e1a00000 	nop			; (mov r0, r0)
+    27e8:	e1a00000 	nop			; (mov r0, r0)
+    27ec:	e1a00000 	nop			; (mov r0, r0)
+    27f0:	e59f203c 	ldr	r2, [pc, #60]	; 2834 <HW_JumpToBootloader+0x74>
+    27f4:	e59f103c 	ldr	r1, [pc, #60]	; 2838 <HW_JumpToBootloader+0x78>
+    27f8:	e59fc03c 	ldr	ip, [pc, #60]	; 283c <HW_JumpToBootloader+0x7c>
+    27fc:	e3a03000 	mov	r3, #0
+    2800:	e5c23080 	strb	r3, [r2, #128]	; 0x80
+    2804:	e581cff8 	str	ip, [r1, #4088]	; 0xff8
+    2808:	e3e0c055 	mvn	ip, #85	; 0x55
+    280c:	e5c2c08c 	strb	ip, [r2, #140]	; 0x8c
+    2810:	e5810ffc 	str	r0, [r1, #4092]	; 0xffc
+    2814:	e3a01055 	mov	r1, #85	; 0x55
+    2818:	e5c2108c 	strb	r1, [r2, #140]	; 0x8c
+    281c:	e5c23040 	strb	r3, [r2, #64]	; 0x40
+    2820:	e1a0e00f 	mov	lr, pc
+    2824:	e12fff13 	bx	r3
+    2828:	e8bd4008 	pop	{r3, lr}
+    282c:	e12fff1e 	bx	lr
+    2830:	e0044000 	.word	0xe0044000
+    2834:	e01fc000 	.word	0xe01fc000
+    2838:	40003000 	.word	0x40003000
+    283c:	12435687 	.word	0x12435687
+
+00002840 <HW_Init>:
+    2840:	e59f10ac 	ldr	r1, [pc, #172]	; 28f4 <HW_Init+0xb4>
+    2844:	e3a0c001 	mov	ip, #1
+    2848:	e52d4004 	push	{r4}		; (str r4, [sp, #-4]!)
+    284c:	e5c1c100 	strb	ip, [r1, #256]	; 0x100
+    2850:	e5c1c040 	strb	ip, [r1, #64]	; 0x40
+    2854:	e59f109c 	ldr	r1, [pc, #156]	; 28f8 <HW_Init+0xb8>
+    2858:	e3e02000 	mvn	r2, #0
+    285c:	e3a00000 	mov	r0, #0
+    2860:	e5022feb 	str	r2, [r2, #-4075]	; 0xfeb
+    2864:	e59f3090 	ldr	r3, [pc, #144]	; 28fc <HW_Init+0xbc>
+    2868:	e5020ff3 	str	r0, [r2, #-4083]	; 0xff3
+    286c:	e5021fcb 	str	r1, [r2, #-4043]	; 0xfcb
+    2870:	e5932004 	ldr	r2, [r3, #4]
+    2874:	e3822701 	orr	r2, r2, #262144	; 0x40000
+    2878:	e5832004 	str	r2, [r3, #4]
+    287c:	e5931004 	ldr	r1, [r3, #4]
+    2880:	e59f2078 	ldr	r2, [pc, #120]	; 2900 <HW_Init+0xc0>
+    2884:	e3811905 	orr	r1, r1, #81920	; 0x14000
+    2888:	e5831004 	str	r1, [r3, #4]
+    288c:	e3a01606 	mov	r1, #6291456	; 0x600000
+    2890:	e5821004 	str	r1, [r2, #4]
+    2894:	e5921008 	ldr	r1, [r2, #8]
+    2898:	e3811606 	orr	r1, r1, #6291456	; 0x600000
+    289c:	e5821008 	str	r1, [r2, #8]
+    28a0:	e5931000 	ldr	r1, [r3]
+    28a4:	e3811005 	orr	r1, r1, #5
+    28a8:	e5831000 	str	r1, [r3]
+    28ac:	e5934000 	ldr	r4, [r3]
+    28b0:	e59f104c 	ldr	r1, [pc, #76]	; 2904 <HW_Init+0xc4>
+    28b4:	e3844050 	orr	r4, r4, #80	; 0x50
+    28b8:	e5834000 	str	r4, [r3]
+    28bc:	e3a0306c 	mov	r3, #108	; 0x6c
+    28c0:	e5c13018 	strb	r3, [r1, #24]
+    28c4:	e3a0c04b 	mov	ip, #75	; 0x4b
+    28c8:	e3a03044 	mov	r3, #68	; 0x44
+    28cc:	e1c1c1b0 	strh	ip, [r1, #16]
+    28d0:	e1c1c1b4 	strh	ip, [r1, #20]
+    28d4:	e5c13000 	strb	r3, [r1]
+    28d8:	e3a03008 	mov	r3, #8
+    28dc:	e5c13018 	strb	r3, [r1, #24]
+    28e0:	e5923008 	ldr	r3, [r2, #8]
+    28e4:	e3c33702 	bic	r3, r3, #524288	; 0x80000
+    28e8:	e5823008 	str	r3, [r2, #8]
+    28ec:	e8bd0010 	ldmfd	sp!, {r4}
+    28f0:	e12fff1e 	bx	lr
+    28f4:	e01fc000 	.word	0xe01fc000
+    28f8:	000025fc 	.word	0x000025fc
+    28fc:	e002c000 	.word	0xe002c000
+    2900:	e0028000 	.word	0xe0028000
+    2904:	e001c000 	.word	0xe001c000
+
+00002908 <HandleTxInt>:
+    2908:	e52d4004 	push	{r4}		; (str r4, [sp, #-4]!)
+    290c:	e59f10b0 	ldr	r1, [pc, #176]	; 29c4 <HandleTxInt+0xbc>
+    2910:	e0602200 	rsb	r2, r0, r0, lsl #4
+    2914:	e1a02102 	lsl	r2, r2, #2
+    2918:	e0813002 	add	r3, r1, r2
+    291c:	e1d3c0b2 	ldrh	ip, [r3, #2]
+    2920:	e19120b2 	ldrh	r2, [r1, r2]
+    2924:	e152000c 	cmp	r2, ip
+    2928:	0a000023 	beq	29bc <HandleTxInt+0xb4>
+    292c:	e59f2094 	ldr	r2, [pc, #148]	; 29c8 <HandleTxInt+0xc0>
+    2930:	e7922100 	ldr	r2, [r2, r0, lsl #2]
+    2934:	e5921008 	ldr	r1, [r2, #8]
+    2938:	e3110004 	tst	r1, #4
+    293c:	0a00001e 	beq	29bc <HandleTxInt+0xb4>
+    2940:	e593101c 	ldr	r1, [r3, #28]
+    2944:	e591000c 	ldr	r0, [r1, #12]
+    2948:	e582003c 	str	r0, [r2, #60]	; 0x3c
+    294c:	e5910008 	ldr	r0, [r1, #8]
+    2950:	e5820038 	str	r0, [r2, #56]	; 0x38
+    2954:	e5910004 	ldr	r0, [r1, #4]
+    2958:	e3c0020e 	bic	r0, r0, #-536870912	; 0xe0000000
+    295c:	e5820034 	str	r0, [r2, #52]	; 0x34
+    2960:	e5d1c002 	ldrb	ip, [r1, #2]
+    2964:	e5d14003 	ldrb	r4, [r1, #3]
+    2968:	e1a0cf0c 	lsl	ip, ip, #30
+    296c:	e59f0058 	ldr	r0, [pc, #88]	; 29cc <HandleTxInt+0xc4>
+    2970:	e18cc804 	orr	ip, ip, r4, lsl #16
+    2974:	e00c0000 	and	r0, ip, r0
+    2978:	e5820030 	str	r0, [r2, #48]	; 0x30
+    297c:	e5d10002 	ldrb	r0, [r1, #2]
+    2980:	e3100004 	tst	r0, #4
+    2984:	13a00023 	movne	r0, #35	; 0x23
+    2988:	03a00021 	moveq	r0, #33	; 0x21
+    298c:	e5820004 	str	r0, [r2, #4]
+    2990:	e1d320b2 	ldrh	r2, [r3, #2]
+    2994:	e593000c 	ldr	r0, [r3, #12]
+    2998:	e2822001 	add	r2, r2, #1
+    299c:	e2811010 	add	r1, r1, #16
+    29a0:	e1a02802 	lsl	r2, r2, #16
+    29a4:	e1a02822 	lsr	r2, r2, #16
+    29a8:	e1510000 	cmp	r1, r0
+    29ac:	e1c320b2 	strh	r2, [r3, #2]
+    29b0:	85932008 	ldrhi	r2, [r3, #8]
+    29b4:	e583101c 	str	r1, [r3, #28]
+    29b8:	8583201c 	strhi	r2, [r3, #28]
+    29bc:	e8bd0010 	ldmfd	sp!, {r4}
+    29c0:	e12fff1e 	bx	lr
+    29c4:	40000004 	.word	0x40000004
+    29c8:	00003c30 	.word	0x00003c30
+    29cc:	c00f0000 	.word	0xc00f0000
+
+000029d0 <HandleRxInt>:
+    29d0:	e59f30fc 	ldr	r3, [pc, #252]	; 2ad4 <HandleRxInt+0x104>
+    29d4:	e92d41f0 	push	{r4, r5, r6, r7, r8, lr}
+    29d8:	e0604200 	rsb	r4, r0, r0, lsl #4
+    29dc:	e0834104 	add	r4, r3, r4, lsl #2
+    29e0:	e59f30f0 	ldr	r3, [pc, #240]	; 2ad8 <HandleRxInt+0x108>
+    29e4:	e7935100 	ldr	r5, [r3, r0, lsl #2]
+    29e8:	e1a08000 	mov	r8, r0
+    29ec:	e3a07004 	mov	r7, #4
+    29f0:	e5953008 	ldr	r3, [r5, #8]
+    29f4:	e3130001 	tst	r3, #1
+    29f8:	0a000033 	beq	2acc <HandleRxInt+0xfc>
+    29fc:	e1d430b6 	ldrh	r3, [r4, #6]
+    2a00:	e3530000 	cmp	r3, #0
+    2a04:	05857004 	streq	r7, [r5, #4]
+    2a08:	0afffff8 	beq	29f0 <HandleRxInt+0x20>
+    2a0c:	e5943034 	ldr	r3, [r4, #52]	; 0x34
+    2a10:	e3530000 	cmp	r3, #0
+    2a14:	e5946020 	ldr	r6, [r4, #32]
+    2a18:	11a00006 	movne	r0, r6
+    2a1c:	11a0e00f 	movne	lr, pc
+    2a20:	112fff13 	bxne	r3
+    2a24:	e595302c 	ldr	r3, [r5, #44]	; 0x2c
+    2a28:	e586300c 	str	r3, [r6, #12]
+    2a2c:	e5953028 	ldr	r3, [r5, #40]	; 0x28
+    2a30:	e5863008 	str	r3, [r6, #8]
+    2a34:	e5953024 	ldr	r3, [r5, #36]	; 0x24
+    2a38:	e3c3320e 	bic	r3, r3, #-536870912	; 0xe0000000
+    2a3c:	e5c68001 	strb	r8, [r6, #1]
+    2a40:	e5863004 	str	r3, [r6, #4]
+    2a44:	e5953020 	ldr	r3, [r5, #32]
+    2a48:	e1a03823 	lsr	r3, r3, #16
+    2a4c:	e203300f 	and	r3, r3, #15
+    2a50:	e5c63003 	strb	r3, [r6, #3]
+    2a54:	e5953020 	ldr	r3, [r5, #32]
+    2a58:	e1a03f23 	lsr	r3, r3, #30
+    2a5c:	e5c63002 	strb	r3, [r6, #2]
+    2a60:	e594302c 	ldr	r3, [r4, #44]	; 0x2c
+    2a64:	e3530000 	cmp	r3, #0
+    2a68:	e5857004 	str	r7, [r5, #4]
+    2a6c:	0a000004 	beq	2a84 <HandleRxInt+0xb4>
+    2a70:	e1a00006 	mov	r0, r6
+    2a74:	e1a0e00f 	mov	lr, pc
+    2a78:	e12fff13 	bx	r3
+    2a7c:	e3500001 	cmp	r0, #1
+    2a80:	0affffda 	beq	29f0 <HandleRxInt+0x20>
+    2a84:	e1d430b6 	ldrh	r3, [r4, #6]
+    2a88:	e2433001 	sub	r3, r3, #1
+    2a8c:	e1a03803 	lsl	r3, r3, #16
+    2a90:	e5942034 	ldr	r2, [r4, #52]	; 0x34
+    2a94:	e1a03823 	lsr	r3, r3, #16
+    2a98:	e1c430b6 	strh	r3, [r4, #6]
+    2a9c:	e5943020 	ldr	r3, [r4, #32]
+    2aa0:	e3520000 	cmp	r2, #0
+    2aa4:	e5942014 	ldr	r2, [r4, #20]
+    2aa8:	12833014 	addne	r3, r3, #20
+    2aac:	02833010 	addeq	r3, r3, #16
+    2ab0:	e1520003 	cmp	r2, r3
+    2ab4:	e5843020 	str	r3, [r4, #32]
+    2ab8:	35943010 	ldrcc	r3, [r4, #16]
+    2abc:	35843020 	strcc	r3, [r4, #32]
+    2ac0:	e5953008 	ldr	r3, [r5, #8]
+    2ac4:	e3130001 	tst	r3, #1
+    2ac8:	1affffcb 	bne	29fc <HandleRxInt+0x2c>
+    2acc:	e8bd41f0 	pop	{r4, r5, r6, r7, r8, lr}
+    2ad0:	e12fff1e 	bx	lr
+    2ad4:	40000004 	.word	0x40000004
+    2ad8:	00003c30 	.word	0x00003c30
+
+00002adc <CAN_DEFISR>:
+    2adc:	e92d000c 	push	{r2, r3}
+    2ae0:	e3a02000 	mov	r2, #0
+    2ae4:	e3e03000 	mvn	r3, #0
+    2ae8:	e5032fcf 	str	r2, [r3, #-4047]	; 0xfcf
+    2aec:	e8bd000c 	pop	{r2, r3}
+    2af0:	e25ef004 	subs	pc, lr, #4
+
+00002af4 <CAN_ReferenceTxQueue>:
+    2af4:	e3500001 	cmp	r0, #1
+    2af8:	93a03000 	movls	r3, #0
+    2afc:	83a03001 	movhi	r3, #1
+    2b00:	e3510000 	cmp	r1, #0
+    2b04:	03833001 	orreq	r3, r3, #1
+    2b08:	e3530000 	cmp	r3, #0
+    2b0c:	13a00000 	movne	r0, #0
+    2b10:	112fff1e 	bxne	lr
+    2b14:	e3520000 	cmp	r2, #0
+    2b18:	10600200 	rsbne	r0, r0, r0, lsl #4
+    2b1c:	159f3018 	ldrne	r3, [pc, #24]	; 2b3c <CAN_ReferenceTxQueue+0x48>
+    2b20:	11a00100 	lslne	r0, r0, #2
+    2b24:	1083c000 	addne	ip, r3, r0
+    2b28:	118320b0 	strhne	r2, [r3, r0]
+    2b2c:	158c1008 	strne	r1, [ip, #8]
+    2b30:	13a00001 	movne	r0, #1
+    2b34:	01a00002 	moveq	r0, r2
+    2b38:	e12fff1e 	bx	lr
+    2b3c:	40000004 	.word	0x40000004
+
+00002b40 <CAN_ReferenceRxQueue>:
+    2b40:	e3500001 	cmp	r0, #1
+    2b44:	93a03000 	movls	r3, #0
+    2b48:	83a03001 	movhi	r3, #1
+    2b4c:	e3510000 	cmp	r1, #0
+    2b50:	03833001 	orreq	r3, r3, #1
+    2b54:	e3530000 	cmp	r3, #0
+    2b58:	13a00000 	movne	r0, #0
+    2b5c:	112fff1e 	bxne	lr
+    2b60:	e3520000 	cmp	r2, #0
+    2b64:	159f3018 	ldrne	r3, [pc, #24]	; 2b84 <CAN_ReferenceRxQueue+0x44>
+    2b68:	10600200 	rsbne	r0, r0, r0, lsl #4
+    2b6c:	10830100 	addne	r0, r3, r0, lsl #2
+    2b70:	15801010 	strne	r1, [r0, #16]
+    2b74:	11c020b4 	strhne	r2, [r0, #4]
+    2b78:	01a00002 	moveq	r0, r2
+    2b7c:	13a00001 	movne	r0, #1
+    2b80:	e12fff1e 	bx	lr
+    2b84:	40000004 	.word	0x40000004
+
+00002b88 <CAN_GetIsrVector>:
+    2b88:	e59f0000 	ldr	r0, [pc]	; 2b90 <CAN_GetIsrVector+0x8>
+    2b8c:	e12fff1e 	bx	lr
+    2b90:	00003b40 	.word	0x00003b40
+
+00002b94 <CAN_SetAtomicHandler>:
+    2b94:	e3500001 	cmp	r0, #1
+    2b98:	93a00000 	movls	r0, #0
+    2b9c:	83a00001 	movhi	r0, #1
+    2ba0:	e3510000 	cmp	r1, #0
+    2ba4:	11a01000 	movne	r1, r0
+    2ba8:	03801001 	orreq	r1, r0, #1
+    2bac:	e3510000 	cmp	r1, #0
+    2bb0:	13a00000 	movne	r0, #0
+    2bb4:	112fff1e 	bxne	lr
+    2bb8:	e3e03000 	mvn	r3, #0
+    2bbc:	e5132fcb 	ldr	r2, [r3, #-4043]	; 0xfcb
+    2bc0:	e3520000 	cmp	r2, #0
+    2bc4:	059f2008 	ldreq	r2, [pc, #8]	; 2bd4 <CAN_SetAtomicHandler+0x40>
+    2bc8:	e3a00001 	mov	r0, #1
+    2bcc:	05032fcb 	streq	r2, [r3, #-4043]	; 0xfcb
+    2bd0:	e12fff1e 	bx	lr
+    2bd4:	00002adc 	.word	0x00002adc
+
+00002bd8 <CAN_SetUnatomicHandler>:
+    2bd8:	e3500001 	cmp	r0, #1
+    2bdc:	93a00000 	movls	r0, #0
+    2be0:	83a00001 	movhi	r0, #1
+    2be4:	e3510000 	cmp	r1, #0
+    2be8:	03800001 	orreq	r0, r0, #1
+    2bec:	e2200001 	eor	r0, r0, #1
+    2bf0:	e12fff1e 	bx	lr
+
+00002bf4 <CAN_SetTimestampHandler>:
+    2bf4:	e3500001 	cmp	r0, #1
+    2bf8:	959f3014 	ldrls	r3, [pc, #20]	; 2c14 <CAN_SetTimestampHandler+0x20>
+    2bfc:	90600200 	rsbls	r0, r0, r0, lsl #4
+    2c00:	90830100 	addls	r0, r3, r0, lsl #2
+    2c04:	95801034 	strls	r1, [r0, #52]	; 0x34
+    2c08:	83a00000 	movhi	r0, #0
+    2c0c:	93a00001 	movls	r0, #1
+    2c10:	e12fff1e 	bx	lr
+    2c14:	40000004 	.word	0x40000004
+
+00002c18 <CAN_SetErrorLimit>:
+    2c18:	e3500001 	cmp	r0, #1
+    2c1c:	959f3014 	ldrls	r3, [pc, #20]	; 2c38 <CAN_SetErrorLimit+0x20>
+    2c20:	90600200 	rsbls	r0, r0, r0, lsl #4
+    2c24:	90830100 	addls	r0, r3, r0, lsl #2
+    2c28:	95c01038 	strbls	r1, [r0, #56]	; 0x38
+    2c2c:	83a00000 	movhi	r0, #0
+    2c30:	93a00001 	movls	r0, #1
+    2c34:	e12fff1e 	bx	lr
+    2c38:	40000004 	.word	0x40000004
+
+00002c3c <CAN_SetRxCallback>:
+    2c3c:	e3500001 	cmp	r0, #1
+    2c40:	959f3014 	ldrls	r3, [pc, #20]	; 2c5c <CAN_SetRxCallback+0x20>
+    2c44:	90600200 	rsbls	r0, r0, r0, lsl #4
+    2c48:	90830100 	addls	r0, r3, r0, lsl #2
+    2c4c:	9580102c 	strls	r1, [r0, #44]	; 0x2c
+    2c50:	83a00000 	movhi	r0, #0
+    2c54:	93a00001 	movls	r0, #1
+    2c58:	e12fff1e 	bx	lr
+    2c5c:	40000004 	.word	0x40000004
+
+00002c60 <CAN_SetChannelInfo>:
+    2c60:	e3500001 	cmp	r0, #1
+    2c64:	959f3014 	ldrls	r3, [pc, #20]	; 2c80 <CAN_SetChannelInfo+0x20>
+    2c68:	90600200 	rsbls	r0, r0, r0, lsl #4
+    2c6c:	90830100 	addls	r0, r3, r0, lsl #2
+    2c70:	95801028 	strls	r1, [r0, #40]	; 0x28
+    2c74:	83a00000 	movhi	r0, #0
+    2c78:	93a00001 	movls	r0, #1
+    2c7c:	e12fff1e 	bx	lr
+    2c80:	40000004 	.word	0x40000004
+
+00002c84 <CAN_GetChannelInfo>:
+    2c84:	e3500001 	cmp	r0, #1
+    2c88:	959f3010 	ldrls	r3, [pc, #16]	; 2ca0 <CAN_GetChannelInfo+0x1c>
+    2c8c:	90600200 	rsbls	r0, r0, r0, lsl #4
+    2c90:	90830100 	addls	r0, r3, r0, lsl #2
+    2c94:	95900028 	ldrls	r0, [r0, #40]	; 0x28
+    2c98:	83a00000 	movhi	r0, #0
+    2c9c:	e12fff1e 	bx	lr
+    2ca0:	40000004 	.word	0x40000004
+
+00002ca4 <CAN_SetTxErrorCallback>:
+    2ca4:	e3500001 	cmp	r0, #1
+    2ca8:	959f3014 	ldrls	r3, [pc, #20]	; 2cc4 <CAN_SetTxErrorCallback+0x20>
+    2cac:	90600200 	rsbls	r0, r0, r0, lsl #4
+    2cb0:	90830100 	addls	r0, r3, r0, lsl #2
+    2cb4:	95801030 	strls	r1, [r0, #48]	; 0x30
+    2cb8:	83a00000 	movhi	r0, #0
+    2cbc:	93a00001 	movls	r0, #1
+    2cc0:	e12fff1e 	bx	lr
+    2cc4:	40000004 	.word	0x40000004
+
+00002cc8 <CAN_SetBusMode>:
+    2cc8:	e3500001 	cmp	r0, #1
+    2ccc:	83a00000 	movhi	r0, #0
+    2cd0:	812fff1e 	bxhi	lr
+    2cd4:	e59f305c 	ldr	r3, [pc, #92]	; 2d38 <CAN_SetBusMode+0x70>
+    2cd8:	e3510001 	cmp	r1, #1
+    2cdc:	e7933100 	ldr	r3, [r3, r0, lsl #2]
+    2ce0:	0a00000a 	beq	2d10 <CAN_SetBusMode+0x48>
+    2ce4:	3a000003 	bcc	2cf8 <CAN_SetBusMode+0x30>
+    2ce8:	e3510002 	cmp	r1, #2
+    2cec:	0a00000c 	beq	2d24 <CAN_SetBusMode+0x5c>
+    2cf0:	e3a00002 	mov	r0, #2
+    2cf4:	e12fff1e 	bx	lr
+    2cf8:	e3a02000 	mov	r2, #0
+    2cfc:	e5832000 	str	r2, [r3]
+    2d00:	e3a02083 	mov	r2, #131	; 0x83
+    2d04:	e3a00001 	mov	r0, #1
+    2d08:	e5832010 	str	r2, [r3, #16]
+    2d0c:	e12fff1e 	bx	lr
+    2d10:	e3a02000 	mov	r2, #0
+    2d14:	e5831000 	str	r1, [r3]
+    2d18:	e1a00001 	mov	r0, r1
+    2d1c:	e5832010 	str	r2, [r3, #16]
+    2d20:	e12fff1e 	bx	lr
+    2d24:	e3a02001 	mov	r2, #1
+    2d28:	e5831000 	str	r1, [r3]
+    2d2c:	e1a00002 	mov	r0, r2
+    2d30:	e5832010 	str	r2, [r3, #16]
+    2d34:	e12fff1e 	bx	lr
+    2d38:	00003c30 	.word	0x00003c30
+
+00002d3c <CAN_TxQueueGetNext>:
+    2d3c:	e3500001 	cmp	r0, #1
+    2d40:	83a00000 	movhi	r0, #0
+    2d44:	812fff1e 	bxhi	lr
+    2d48:	e59f3034 	ldr	r3, [pc, #52]	; 2d84 <CAN_TxQueueGetNext+0x48>
+    2d4c:	e0602200 	rsb	r2, r0, r0, lsl #4
+    2d50:	e0832102 	add	r2, r3, r2, lsl #2
+    2d54:	e1d230b2 	ldrh	r3, [r2, #2]
+    2d58:	e59f1028 	ldr	r1, [pc, #40]	; 2d88 <CAN_TxQueueGetNext+0x4c>
+    2d5c:	e3530000 	cmp	r3, #0
+    2d60:	e7911100 	ldr	r1, [r1, r0, lsl #2]
+    2d64:	01a00003 	moveq	r0, r3
+    2d68:	012fff1e 	bxeq	lr
+    2d6c:	e5913000 	ldr	r3, [r1]
+    2d70:	e3130001 	tst	r3, #1
+    2d74:	05920018 	ldreq	r0, [r2, #24]
+    2d78:	012fff1e 	bxeq	lr
+    2d7c:	e3a00000 	mov	r0, #0
+    2d80:	e12fff1e 	bx	lr
+    2d84:	40000004 	.word	0x40000004
+    2d88:	00003c30 	.word	0x00003c30
+
+00002d8c <CAN_RxQueueGetNext>:
+    2d8c:	e3500001 	cmp	r0, #1
+    2d90:	8a00000e 	bhi	2dd0 <CAN_RxQueueGetNext+0x44>
+    2d94:	e59f303c 	ldr	r3, [pc, #60]	; 2dd8 <CAN_RxQueueGetNext+0x4c>
+    2d98:	e0602200 	rsb	r2, r0, r0, lsl #4
+    2d9c:	e0833102 	add	r3, r3, r2, lsl #2
+    2da0:	e1d320b6 	ldrh	r2, [r3, #6]
+    2da4:	e1d310b4 	ldrh	r1, [r3, #4]
+    2da8:	e1510002 	cmp	r1, r2
+    2dac:	e59f2028 	ldr	r2, [pc, #40]	; 2ddc <CAN_RxQueueGetNext+0x50>
+    2db0:	e7922100 	ldr	r2, [r2, r0, lsl #2]
+    2db4:	0a000005 	beq	2dd0 <CAN_RxQueueGetNext+0x44>
+    2db8:	e5922000 	ldr	r2, [r2]
+    2dbc:	e3120001 	tst	r2, #1
+    2dc0:	05930024 	ldreq	r0, [r3, #36]	; 0x24
+    2dc4:	012fff1e 	bxeq	lr
+    2dc8:	e3a00000 	mov	r0, #0
+    2dcc:	e12fff1e 	bx	lr
+    2dd0:	e3a00000 	mov	r0, #0
+    2dd4:	e12fff1e 	bx	lr
+    2dd8:	40000004 	.word	0x40000004
+    2ddc:	00003c30 	.word	0x00003c30
+
+00002de0 <CAN_TxQueueWriteNext>:
+    2de0:	e3500001 	cmp	r0, #1
+    2de4:	e92d0030 	push	{r4, r5}
+    2de8:	83a00000 	movhi	r0, #0
+    2dec:	9a000001 	bls	2df8 <CAN_TxQueueWriteNext+0x18>
+    2df0:	e8bd0030 	pop	{r4, r5}
+    2df4:	e12fff1e 	bx	lr
+    2df8:	e3e02000 	mvn	r2, #0
+    2dfc:	e5124fef 	ldr	r4, [r2, #-4079]	; 0xfef
+    2e00:	e59fc0e8 	ldr	ip, [pc, #232]	; 2ef0 <CAN_TxQueueWriteNext+0x110>
+    2e04:	e0601200 	rsb	r1, r0, r0, lsl #4
+    2e08:	e5022feb 	str	r2, [r2, #-4075]	; 0xfeb
+    2e0c:	e59f50e0 	ldr	r5, [pc, #224]	; 2ef4 <CAN_TxQueueWriteNext+0x114>
+    2e10:	e1a01101 	lsl	r1, r1, #2
+    2e14:	e08c3001 	add	r3, ip, r1
+    2e18:	e7955100 	ldr	r5, [r5, r0, lsl #2]
+    2e1c:	e1a00000 	nop			; (mov r0, r0)
+    2e20:	e1a00000 	nop			; (mov r0, r0)
+    2e24:	e1a00000 	nop			; (mov r0, r0)
+    2e28:	e1a00000 	nop			; (mov r0, r0)
+    2e2c:	e1d300b2 	ldrh	r0, [r3, #2]
+    2e30:	e19c10b1 	ldrh	r1, [ip, r1]
+    2e34:	e1510000 	cmp	r1, r0
+    2e38:	0a00000f 	beq	2e7c <CAN_TxQueueWriteNext+0x9c>
+    2e3c:	e5932018 	ldr	r2, [r3, #24]
+    2e40:	e1d310b2 	ldrh	r1, [r3, #2]
+    2e44:	e593000c 	ldr	r0, [r3, #12]
+    2e48:	e2822010 	add	r2, r2, #16
+    2e4c:	e1520000 	cmp	r2, r0
+    2e50:	e2411001 	sub	r1, r1, #1
+    2e54:	e5832018 	str	r2, [r3, #24]
+    2e58:	e1a01801 	lsl	r1, r1, #16
+    2e5c:	85932008 	ldrhi	r2, [r3, #8]
+    2e60:	e1a01821 	lsr	r1, r1, #16
+    2e64:	e1c310b2 	strh	r1, [r3, #2]
+    2e68:	85832018 	strhi	r2, [r3, #24]
+    2e6c:	e3e03000 	mvn	r3, #0
+    2e70:	e5034fef 	str	r4, [r3, #-4079]	; 0xfef
+    2e74:	e3a00002 	mov	r0, #2
+    2e78:	eaffffdc 	b	2df0 <CAN_TxQueueWriteNext+0x10>
+    2e7c:	e5951008 	ldr	r1, [r5, #8]
+    2e80:	e3110004 	tst	r1, #4
+    2e84:	0affffec 	beq	2e3c <CAN_TxQueueWriteNext+0x5c>
+    2e88:	e5933018 	ldr	r3, [r3, #24]
+    2e8c:	e593100c 	ldr	r1, [r3, #12]
+    2e90:	e585103c 	str	r1, [r5, #60]	; 0x3c
+    2e94:	e5931008 	ldr	r1, [r3, #8]
+    2e98:	e5851038 	str	r1, [r5, #56]	; 0x38
+    2e9c:	e5931004 	ldr	r1, [r3, #4]
+    2ea0:	e3c1120e 	bic	r1, r1, #-536870912	; 0xe0000000
+    2ea4:	e5851034 	str	r1, [r5, #52]	; 0x34
+    2ea8:	e5d30002 	ldrb	r0, [r3, #2]
+    2eac:	e5d3c003 	ldrb	ip, [r3, #3]
+    2eb0:	e1a00f00 	lsl	r0, r0, #30
+    2eb4:	e59f103c 	ldr	r1, [pc, #60]	; 2ef8 <CAN_TxQueueWriteNext+0x118>
+    2eb8:	e180080c 	orr	r0, r0, ip, lsl #16
+    2ebc:	e0001001 	and	r1, r0, r1
+    2ec0:	e5851030 	str	r1, [r5, #48]	; 0x30
+    2ec4:	e5d33002 	ldrb	r3, [r3, #2]
+    2ec8:	e3130004 	tst	r3, #4
+    2ecc:	13a03023 	movne	r3, #35	; 0x23
+    2ed0:	03a03021 	moveq	r3, #33	; 0x21
+    2ed4:	e5853004 	str	r3, [r5, #4]
+    2ed8:	e5953000 	ldr	r3, [r5]
+    2edc:	e3130001 	tst	r3, #1
+    2ee0:	e5024fef 	str	r4, [r2, #-4079]	; 0xfef
+    2ee4:	13a00003 	movne	r0, #3
+    2ee8:	03a00001 	moveq	r0, #1
+    2eec:	eaffffbf 	b	2df0 <CAN_TxQueueWriteNext+0x10>
+    2ef0:	40000004 	.word	0x40000004
+    2ef4:	00003c30 	.word	0x00003c30
+    2ef8:	c00f0000 	.word	0xc00f0000
+
+00002efc <CAN_RxQueueReadNext>:
+    2efc:	e3500001 	cmp	r0, #1
+    2f00:	9a000001 	bls	2f0c <CAN_RxQueueReadNext+0x10>
+    2f04:	e3a00000 	mov	r0, #0
+    2f08:	e12fff1e 	bx	lr
+    2f0c:	e3e03000 	mvn	r3, #0
+    2f10:	e5132fef 	ldr	r2, [r3, #-4079]	; 0xfef
+    2f14:	e5033feb 	str	r3, [r3, #-4075]	; 0xfeb
+    2f18:	e59f3060 	ldr	r3, [pc, #96]	; 2f80 <CAN_RxQueueReadNext+0x84>
+    2f1c:	e0600200 	rsb	r0, r0, r0, lsl #4
+    2f20:	e0830100 	add	r0, r3, r0, lsl #2
+    2f24:	e1a00000 	nop			; (mov r0, r0)
+    2f28:	e1a00000 	nop			; (mov r0, r0)
+    2f2c:	e1a00000 	nop			; (mov r0, r0)
+    2f30:	e1a00000 	nop			; (mov r0, r0)
+    2f34:	e1d030b6 	ldrh	r3, [r0, #6]
+    2f38:	e2833001 	add	r3, r3, #1
+    2f3c:	e1a03803 	lsl	r3, r3, #16
+    2f40:	e5901034 	ldr	r1, [r0, #52]	; 0x34
+    2f44:	e1a03823 	lsr	r3, r3, #16
+    2f48:	e1c030b6 	strh	r3, [r0, #6]
+    2f4c:	e5903024 	ldr	r3, [r0, #36]	; 0x24
+    2f50:	e3510000 	cmp	r1, #0
+    2f54:	e5901014 	ldr	r1, [r0, #20]
+    2f58:	12833014 	addne	r3, r3, #20
+    2f5c:	02833010 	addeq	r3, r3, #16
+    2f60:	e1510003 	cmp	r1, r3
+    2f64:	e5803024 	str	r3, [r0, #36]	; 0x24
+    2f68:	35903010 	ldrcc	r3, [r0, #16]
+    2f6c:	35803024 	strcc	r3, [r0, #36]	; 0x24
+    2f70:	e3e03000 	mvn	r3, #0
+    2f74:	e5032fef 	str	r2, [r3, #-4079]	; 0xfef
+    2f78:	e3a00001 	mov	r0, #1
+    2f7c:	e12fff1e 	bx	lr
+    2f80:	40000004 	.word	0x40000004
+
+00002f84 <CAN_GetTransceiverType>:
+    2f84:	e3500001 	cmp	r0, #1
+    2f88:	93a00000 	movls	r0, #0
+    2f8c:	83a00001 	movhi	r0, #1
+    2f90:	e3510000 	cmp	r1, #0
+    2f94:	03800001 	orreq	r0, r0, #1
+    2f98:	e3500000 	cmp	r0, #0
+    2f9c:	03a00001 	moveq	r0, #1
+    2fa0:	05c10000 	strbeq	r0, [r1]
+    2fa4:	13a00000 	movne	r0, #0
+    2fa8:	e12fff1e 	bx	lr
+
+00002fac <CAN_SetTransceiverMode>:
+    2fac:	e3500001 	cmp	r0, #1
+    2fb0:	9a000001 	bls	2fbc <CAN_SetTransceiverMode+0x10>
+    2fb4:	e3a00000 	mov	r0, #0
+    2fb8:	e12fff1e 	bx	lr
+    2fbc:	0a000008 	beq	2fe4 <CAN_SetTransceiverMode+0x38>
+    2fc0:	e3510000 	cmp	r1, #0
+    2fc4:	0a00000c 	beq	2ffc <CAN_SetTransceiverMode+0x50>
+    2fc8:	e3510005 	cmp	r1, #5
+    2fcc:	1afffff8 	bne	2fb4 <CAN_SetTransceiverMode+0x8>
+    2fd0:	e59f3058 	ldr	r3, [pc, #88]	; 3030 <CAN_SetTransceiverMode+0x84>
+    2fd4:	e3a02501 	mov	r2, #4194304	; 0x400000
+    2fd8:	e5832004 	str	r2, [r3, #4]
+    2fdc:	e3a00001 	mov	r0, #1
+    2fe0:	e12fff1e 	bx	lr
+    2fe4:	e3510000 	cmp	r1, #0
+    2fe8:	0a00000c 	beq	3020 <CAN_SetTransceiverMode+0x74>
+    2fec:	e3510005 	cmp	r1, #5
+    2ff0:	0a000006 	beq	3010 <CAN_SetTransceiverMode+0x64>
+    2ff4:	e3a00000 	mov	r0, #0
+    2ff8:	e12fff1e 	bx	lr
+    2ffc:	e59f302c 	ldr	r3, [pc, #44]	; 3030 <CAN_SetTransceiverMode+0x84>
+    3000:	e3a02501 	mov	r2, #4194304	; 0x400000
+    3004:	e583200c 	str	r2, [r3, #12]
+    3008:	e3a00001 	mov	r0, #1
+    300c:	e12fff1e 	bx	lr
+    3010:	e59f3018 	ldr	r3, [pc, #24]	; 3030 <CAN_SetTransceiverMode+0x84>
+    3014:	e3a02602 	mov	r2, #2097152	; 0x200000
+    3018:	e5832004 	str	r2, [r3, #4]
+    301c:	e12fff1e 	bx	lr
+    3020:	e59f3008 	ldr	r3, [pc, #8]	; 3030 <CAN_SetTransceiverMode+0x84>
+    3024:	e3a02602 	mov	r2, #2097152	; 0x200000
+    3028:	e583200c 	str	r2, [r3, #12]
+    302c:	e12fff1e 	bx	lr
+    3030:	e0028000 	.word	0xe0028000
+
+00003034 <CAN_FilterAddId>:
+    3034:	e92d000c 	push	{r2, r3}
+    3038:	e92d05f0 	push	{r4, r5, r6, r7, r8, sl}
+    303c:	e59f361c 	ldr	r3, [pc, #1564]	; 3660 <CAN_FilterAddId+0x62c>
+    3040:	e5d32078 	ldrb	r2, [r3, #120]	; 0x78
+    3044:	e59fc618 	ldr	ip, [pc, #1560]	; 3664 <CAN_FilterAddId+0x630>
+    3048:	e24dd008 	sub	sp, sp, #8
+    304c:	e3a04001 	mov	r4, #1
+    3050:	e2722001 	rsbs	r2, r2, #1
+    3054:	e59d3020 	ldr	r3, [sp, #32]
+    3058:	33a02000 	movcc	r2, #0
+    305c:	e58c4000 	str	r4, [ip]
+    3060:	e3510003 	cmp	r1, #3
+    3064:	979ff101 	ldrls	pc, [pc, r1, lsl #2]
+    3068:	ea0000ed 	b	3424 <CAN_FilterAddId+0x3f0>
+    306c:	00003278 	.word	0x00003278
+    3070:	00003438 	.word	0x00003438
+    3074:	00003158 	.word	0x00003158
+    3078:	0000307c 	.word	0x0000307c
+    307c:	e59d1024 	ldr	r1, [sp, #36]	; 0x24
+    3080:	e28dc028 	add	ip, sp, #40	; 0x28
+    3084:	e373021e 	cmn	r3, #-536870911	; 0xe0000001
+    3088:	9371021e 	cmnls	r1, #-536870911	; 0xe0000001
+    308c:	93a04000 	movls	r4, #0
+    3090:	83a04001 	movhi	r4, #1
+    3094:	e58dc004 	str	ip, [sp, #4]
+    3098:	8a000125 	bhi	3534 <CAN_FilterAddId+0x500>
+    309c:	e1530001 	cmp	r3, r1
+    30a0:	8a000125 	bhi	353c <CAN_FilterAddId+0x508>
+    30a4:	e59f55b8 	ldr	r5, [pc, #1464]	; 3664 <CAN_FilterAddId+0x630>
+    30a8:	e59fc5b8 	ldr	ip, [pc, #1464]	; 3668 <CAN_FilterAddId+0x634>
+    30ac:	e5956014 	ldr	r6, [r5, #20]
+    30b0:	e156000c 	cmp	r6, ip
+    30b4:	8a000120 	bhi	353c <CAN_FilterAddId+0x508>
+    30b8:	e595c014 	ldr	ip, [r5, #20]
+    30bc:	e5957010 	ldr	r7, [r5, #16]
+    30c0:	e1a0c70c 	lsl	ip, ip, #14
+    30c4:	e1a07707 	lsl	r7, r7, #14
+    30c8:	e0802002 	add	r2, r0, r2
+    30cc:	e1a0c82c 	lsr	ip, ip, #16
+    30d0:	e1a07827 	lsr	r7, r7, #16
+    30d4:	e1a02e82 	lsl	r2, r2, #29
+    30d8:	e15c0007 	cmp	ip, r7
+    30dc:	e1823003 	orr	r3, r2, r3
+    30e0:	9a000011 	bls	312c <CAN_FilterAddId+0xf8>
+    30e4:	e59f6580 	ldr	r6, [pc, #1408]	; 366c <CAN_FilterAddId+0x638>
+    30e8:	e24c4002 	sub	r4, ip, #2
+    30ec:	e7965104 	ldr	r5, [r6, r4, lsl #2]
+    30f0:	e1530005 	cmp	r3, r5
+    30f4:	2a00000c 	bcs	312c <CAN_FilterAddId+0xf8>
+    30f8:	e786510c 	str	r5, [r6, ip, lsl #2]
+    30fc:	e1a04804 	lsl	r4, r4, #16
+    3100:	e24c5001 	sub	r5, ip, #1
+    3104:	e28c0001 	add	r0, ip, #1
+    3108:	e7965105 	ldr	r5, [r6, r5, lsl #2]
+    310c:	e1a0c824 	lsr	ip, r4, #16
+    3110:	e157000c 	cmp	r7, ip
+    3114:	e24c4002 	sub	r4, ip, #2
+    3118:	e7865100 	str	r5, [r6, r0, lsl #2]
+    311c:	2a000002 	bcs	312c <CAN_FilterAddId+0xf8>
+    3120:	e7965104 	ldr	r5, [r6, r4, lsl #2]
+    3124:	e1530005 	cmp	r3, r5
+    3128:	3afffff2 	bcc	30f8 <CAN_FilterAddId+0xc4>
+    312c:	e59f4538 	ldr	r4, [pc, #1336]	; 366c <CAN_FilterAddId+0x638>
+    3130:	e28c0001 	add	r0, ip, #1
+    3134:	e1822001 	orr	r2, r2, r1
+    3138:	e784310c 	str	r3, [r4, ip, lsl #2]
+    313c:	e7842100 	str	r2, [r4, r0, lsl #2]
+    3140:	e59f351c 	ldr	r3, [pc, #1308]	; 3664 <CAN_FilterAddId+0x630>
+    3144:	e5932014 	ldr	r2, [r3, #20]
+    3148:	e2822008 	add	r2, r2, #8
+    314c:	e5832014 	str	r2, [r3, #20]
+    3150:	e3a00001 	mov	r0, #1
+    3154:	ea0000b3 	b	3428 <CAN_FilterAddId+0x3f4>
+    3158:	e59dc024 	ldr	ip, [sp, #36]	; 0x24
+    315c:	e28d1028 	add	r1, sp, #40	; 0x28
+    3160:	e35c0b02 	cmp	ip, #2048	; 0x800
+    3164:	33530b02 	cmpcc	r3, #2048	; 0x800
+    3168:	33a05000 	movcc	r5, #0
+    316c:	23a05001 	movcs	r5, #1
+    3170:	e58d1004 	str	r1, [sp, #4]
+    3174:	2a0000ee 	bcs	3534 <CAN_FilterAddId+0x500>
+    3178:	e153000c 	cmp	r3, ip
+    317c:	2a0000f0 	bcs	3544 <CAN_FilterAddId+0x510>
+    3180:	e59f44dc 	ldr	r4, [pc, #1244]	; 3664 <CAN_FilterAddId+0x630>
+    3184:	e5941014 	ldr	r1, [r4, #20]
+    3188:	e3510b02 	cmp	r1, #2048	; 0x800
+    318c:	0a0000ec 	beq	3544 <CAN_FilterAddId+0x510>
+    3190:	e5941014 	ldr	r1, [r4, #20]
+    3194:	e594500c 	ldr	r5, [r4, #12]
+    3198:	e0802002 	add	r2, r0, r2
+    319c:	e1a03803 	lsl	r3, r3, #16
+    31a0:	e1a01701 	lsl	r1, r1, #14
+    31a4:	e1a05705 	lsl	r5, r5, #14
+    31a8:	e1833e82 	orr	r3, r3, r2, lsl #29
+    31ac:	e1a01821 	lsr	r1, r1, #16
+    31b0:	e1a05825 	lsr	r5, r5, #16
+    31b4:	e183c00c 	orr	ip, r3, ip
+    31b8:	e1510005 	cmp	r1, r5
+    31bc:	e18c2682 	orr	r2, ip, r2, lsl #13
+    31c0:	9a000007 	bls	31e4 <CAN_FilterAddId+0x1b0>
+    31c4:	e59fc4a0 	ldr	ip, [pc, #1184]	; 366c <CAN_FilterAddId+0x638>
+    31c8:	e2413001 	sub	r3, r1, #1
+    31cc:	e79c4103 	ldr	r4, [ip, r3, lsl #2]
+    31d0:	e1a03803 	lsl	r3, r3, #16
+    31d4:	e78c4101 	str	r4, [ip, r1, lsl #2]
+    31d8:	e1a01823 	lsr	r1, r3, #16
+    31dc:	e1550001 	cmp	r5, r1
+    31e0:	3afffff8 	bcc	31c8 <CAN_FilterAddId+0x194>
+    31e4:	e59f1478 	ldr	r1, [pc, #1144]	; 3664 <CAN_FilterAddId+0x630>
+    31e8:	e591300c 	ldr	r3, [r1, #12]
+    31ec:	e5910008 	ldr	r0, [r1, #8]
+    31f0:	e1a03703 	lsl	r3, r3, #14
+    31f4:	e1a00700 	lsl	r0, r0, #14
+    31f8:	e1a03823 	lsr	r3, r3, #16
+    31fc:	e1a00820 	lsr	r0, r0, #16
+    3200:	e1530000 	cmp	r3, r0
+    3204:	9a00000d 	bls	3240 <CAN_FilterAddId+0x20c>
+    3208:	e59fc45c 	ldr	ip, [pc, #1116]	; 366c <CAN_FilterAddId+0x638>
+    320c:	e2431001 	sub	r1, r3, #1
+    3210:	e79c4101 	ldr	r4, [ip, r1, lsl #2]
+    3214:	e1520004 	cmp	r2, r4
+    3218:	2a000008 	bcs	3240 <CAN_FilterAddId+0x20c>
+    321c:	e1a01801 	lsl	r1, r1, #16
+    3220:	e78c4103 	str	r4, [ip, r3, lsl #2]
+    3224:	e1a03821 	lsr	r3, r1, #16
+    3228:	e1500003 	cmp	r0, r3
+    322c:	e2431001 	sub	r1, r3, #1
+    3230:	2a000002 	bcs	3240 <CAN_FilterAddId+0x20c>
+    3234:	e79c4101 	ldr	r4, [ip, r1, lsl #2]
+    3238:	e1520004 	cmp	r2, r4
+    323c:	3afffff6 	bcc	321c <CAN_FilterAddId+0x1e8>
+    3240:	e59f0424 	ldr	r0, [pc, #1060]	; 366c <CAN_FilterAddId+0x638>
+    3244:	e59f1418 	ldr	r1, [pc, #1048]	; 3664 <CAN_FilterAddId+0x630>
+    3248:	e7802103 	str	r2, [r0, r3, lsl #2]
+    324c:	e591300c 	ldr	r3, [r1, #12]
+    3250:	e2833004 	add	r3, r3, #4
+    3254:	e581300c 	str	r3, [r1, #12]
+    3258:	e5913010 	ldr	r3, [r1, #16]
+    325c:	e2833004 	add	r3, r3, #4
+    3260:	e5813010 	str	r3, [r1, #16]
+    3264:	e5913014 	ldr	r3, [r1, #20]
+    3268:	e2833004 	add	r3, r3, #4
+    326c:	e5813014 	str	r3, [r1, #20]
+    3270:	e3a00001 	mov	r0, #1
+    3274:	ea00006b 	b	3428 <CAN_FilterAddId+0x3f4>
+    3278:	e3530b02 	cmp	r3, #2048	; 0x800
+    327c:	2a0000ac 	bcs	3534 <CAN_FilterAddId+0x500>
+    3280:	e59f13dc 	ldr	r1, [pc, #988]	; 3664 <CAN_FilterAddId+0x630>
+    3284:	e591c008 	ldr	ip, [r1, #8]
+    3288:	e5914004 	ldr	r4, [r1, #4]
+    328c:	e1a0c78c 	lsl	ip, ip, #15
+    3290:	e1a0c82c 	lsr	ip, ip, #16
+    3294:	e1a04784 	lsl	r4, r4, #15
+    3298:	e15c0824 	cmp	ip, r4, lsr #16
+    329c:	0a0000dd 	beq	3618 <CAN_FilterAddId+0x5e4>
+    32a0:	9a0000c9 	bls	35cc <CAN_FilterAddId+0x598>
+    32a4:	e5911014 	ldr	r1, [r1, #20]
+    32a8:	e3510b02 	cmp	r1, #2048	; 0x800
+    32ac:	e24cc002 	sub	ip, ip, #2
+    32b0:	0a00009a 	beq	3520 <CAN_FilterAddId+0x4ec>
+    32b4:	e59f13b0 	ldr	r1, [pc, #944]	; 366c <CAN_FilterAddId+0x638>
+    32b8:	e1a0c08c 	lsl	ip, ip, #1
+    32bc:	e0802002 	add	r2, r0, r2
+    32c0:	e19c10b1 	ldrh	r1, [ip, r1]
+    32c4:	e1834682 	orr	r4, r3, r2, lsl #13
+    32c8:	e1a04804 	lsl	r4, r4, #16
+    32cc:	e3510a0f 	cmp	r1, #61440	; 0xf000
+    32d0:	e1a04824 	lsr	r4, r4, #16
+    32d4:	0a0000c0 	beq	35dc <CAN_FilterAddId+0x5a8>
+    32d8:	e59f2384 	ldr	r2, [pc, #900]	; 3664 <CAN_FilterAddId+0x630>
+    32dc:	e5923014 	ldr	r3, [r2, #20]
+    32e0:	e592c008 	ldr	ip, [r2, #8]
+    32e4:	e1a03703 	lsl	r3, r3, #14
+    32e8:	e1a0c70c 	lsl	ip, ip, #14
+    32ec:	e1a03823 	lsr	r3, r3, #16
+    32f0:	e1a0c82c 	lsr	ip, ip, #16
+    32f4:	e153000c 	cmp	r3, ip
+    32f8:	9a000007 	bls	331c <CAN_FilterAddId+0x2e8>
+    32fc:	e59f1368 	ldr	r1, [pc, #872]	; 366c <CAN_FilterAddId+0x638>
+    3300:	e2432001 	sub	r2, r3, #1
+    3304:	e7910102 	ldr	r0, [r1, r2, lsl #2]
+    3308:	e1a02802 	lsl	r2, r2, #16
+    330c:	e7810103 	str	r0, [r1, r3, lsl #2]
+    3310:	e1a03822 	lsr	r3, r2, #16
+    3314:	e15c0003 	cmp	ip, r3
+    3318:	3afffff8 	bcc	3300 <CAN_FilterAddId+0x2cc>
+    331c:	e59f2340 	ldr	r2, [pc, #832]	; 3664 <CAN_FilterAddId+0x630>
+    3320:	e5921008 	ldr	r1, [r2, #8]
+    3324:	e59f3340 	ldr	r3, [pc, #832]	; 366c <CAN_FilterAddId+0x638>
+    3328:	e1a01701 	lsl	r1, r1, #14
+    332c:	e1a01821 	lsr	r1, r1, #16
+    3330:	e3a00a0f 	mov	r0, #61440	; 0xf000
+    3334:	e7830101 	str	r0, [r3, r1, lsl #2]
+    3338:	e5923008 	ldr	r3, [r2, #8]
+    333c:	e5920008 	ldr	r0, [r2, #8]
+    3340:	e5928004 	ldr	r8, [r2, #4]
+    3344:	e5921004 	ldr	r1, [r2, #4]
+    3348:	e5921008 	ldr	r1, [r2, #8]
+    334c:	e2811004 	add	r1, r1, #4
+    3350:	e5821008 	str	r1, [r2, #8]
+    3354:	e592100c 	ldr	r1, [r2, #12]
+    3358:	e2811004 	add	r1, r1, #4
+    335c:	e582100c 	str	r1, [r2, #12]
+    3360:	e5921010 	ldr	r1, [r2, #16]
+    3364:	e2811004 	add	r1, r1, #4
+    3368:	e5821010 	str	r1, [r2, #16]
+    336c:	e5921014 	ldr	r1, [r2, #20]
+    3370:	e1a030a3 	lsr	r3, r3, #1
+    3374:	e2833001 	add	r3, r3, #1
+    3378:	e2811004 	add	r1, r1, #4
+    337c:	e1a03803 	lsl	r3, r3, #16
+    3380:	e1a00700 	lsl	r0, r0, #14
+    3384:	e1a08788 	lsl	r8, r8, #15
+    3388:	e5821014 	str	r1, [r2, #20]
+    338c:	e1a03823 	lsr	r3, r3, #16
+    3390:	e1a00820 	lsr	r0, r0, #16
+    3394:	e1a08828 	lsr	r8, r8, #16
+    3398:	e1580003 	cmp	r8, r3
+    339c:	8a0000a9 	bhi	3648 <CAN_FilterAddId+0x614>
+    33a0:	e59fa2c4 	ldr	sl, [pc, #708]	; 366c <CAN_FilterAddId+0x638>
+    33a4:	e79a5100 	ldr	r5, [sl, r0, lsl #2]
+    33a8:	e243c003 	sub	ip, r3, #3
+    33ac:	e2836001 	add	r6, r3, #1
+    33b0:	e1a0208c 	lsl	r2, ip, #1
+    33b4:	e1a01086 	lsl	r1, r6, #1
+    33b8:	e282220e 	add	r2, r2, #-536870912	; 0xe0000000
+    33bc:	e281120e 	add	r1, r1, #-536870912	; 0xe0000000
+    33c0:	e2137001 	ands	r7, r3, #1
+    33c4:	e282290e 	add	r2, r2, #229376	; 0x38000
+    33c8:	e281190e 	add	r1, r1, #229376	; 0x38000
+    33cc:	1a00005e 	bne	354c <CAN_FilterAddId+0x518>
+    33d0:	e1d110b0 	ldrh	r1, [r1]
+    33d4:	e1510004 	cmp	r1, r4
+    33d8:	9a00005b 	bls	354c <CAN_FilterAddId+0x518>
+    33dc:	e1a02100 	lsl	r2, r0, #2
+    33e0:	e282220e 	add	r2, r2, #-536870912	; 0xe0000000
+    33e4:	e1a05825 	lsr	r5, r5, #16
+    33e8:	e282290e 	add	r2, r2, #229376	; 0x38000
+    33ec:	e1855805 	orr	r5, r5, r5, lsl #16
+    33f0:	e1a03806 	lsl	r3, r6, #16
+    33f4:	e5825000 	str	r5, [r2]
+    33f8:	e1a03823 	lsr	r3, r3, #16
+    33fc:	e1580003 	cmp	r8, r3
+    3400:	9affffe8 	bls	33a8 <CAN_FilterAddId+0x374>
+    3404:	e2037001 	and	r7, r3, #1
+    3408:	e3570000 	cmp	r7, #0
+    340c:	1a000059 	bne	3578 <CAN_FilterAddId+0x544>
+    3410:	e1a05825 	lsr	r5, r5, #16
+    3414:	e1844805 	orr	r4, r4, r5, lsl #16
+    3418:	e5824000 	str	r4, [r2]
+    341c:	e3a00001 	mov	r0, #1
+    3420:	ea000000 	b	3428 <CAN_FilterAddId+0x3f4>
+    3424:	e3a00001 	mov	r0, #1
+    3428:	e28dd008 	add	sp, sp, #8
+    342c:	e8bd05f0 	pop	{r4, r5, r6, r7, r8, sl}
+    3430:	e28dd008 	add	sp, sp, #8
+    3434:	e12fff1e 	bx	lr
+    3438:	e373021e 	cmn	r3, #-536870911	; 0xe0000001
+    343c:	8a00003c 	bhi	3534 <CAN_FilterAddId+0x500>
+    3440:	e59fc21c 	ldr	ip, [pc, #540]	; 3664 <CAN_FilterAddId+0x630>
+    3444:	e59c1014 	ldr	r1, [ip, #20]
+    3448:	e3510b02 	cmp	r1, #2048	; 0x800
+    344c:	0a000038 	beq	3534 <CAN_FilterAddId+0x500>
+    3450:	e59c1014 	ldr	r1, [ip, #20]
+    3454:	e59c6010 	ldr	r6, [ip, #16]
+    3458:	e1a01701 	lsl	r1, r1, #14
+    345c:	e1a06706 	lsl	r6, r6, #14
+    3460:	e1a01821 	lsr	r1, r1, #16
+    3464:	e1a06826 	lsr	r6, r6, #16
+    3468:	e0802002 	add	r2, r0, r2
+    346c:	e1510006 	cmp	r1, r6
+    3470:	e1833e82 	orr	r3, r3, r2, lsl #29
+    3474:	9a000007 	bls	3498 <CAN_FilterAddId+0x464>
+    3478:	e59f41ec 	ldr	r4, [pc, #492]	; 366c <CAN_FilterAddId+0x638>
+    347c:	e241c001 	sub	ip, r1, #1
+    3480:	e794510c 	ldr	r5, [r4, ip, lsl #2]
+    3484:	e1a0c80c 	lsl	ip, ip, #16
+    3488:	e7845101 	str	r5, [r4, r1, lsl #2]
+    348c:	e1a0182c 	lsr	r1, ip, #16
+    3490:	e1560001 	cmp	r6, r1
+    3494:	3afffff8 	bcc	347c <CAN_FilterAddId+0x448>
+    3498:	e59f21c4 	ldr	r2, [pc, #452]	; 3664 <CAN_FilterAddId+0x630>
+    349c:	e5921010 	ldr	r1, [r2, #16]
+    34a0:	e592200c 	ldr	r2, [r2, #12]
+    34a4:	e1a01701 	lsl	r1, r1, #14
+    34a8:	e1a02702 	lsl	r2, r2, #14
+    34ac:	e1a01821 	lsr	r1, r1, #16
+    34b0:	e1a02822 	lsr	r2, r2, #16
+    34b4:	e1510002 	cmp	r1, r2
+    34b8:	9a00000d 	bls	34f4 <CAN_FilterAddId+0x4c0>
+    34bc:	e59f01a8 	ldr	r0, [pc, #424]	; 366c <CAN_FilterAddId+0x638>
+    34c0:	e241c001 	sub	ip, r1, #1
+    34c4:	e790410c 	ldr	r4, [r0, ip, lsl #2]
+    34c8:	e1530004 	cmp	r3, r4
+    34cc:	2a000008 	bcs	34f4 <CAN_FilterAddId+0x4c0>
+    34d0:	e1a0c80c 	lsl	ip, ip, #16
+    34d4:	e7804101 	str	r4, [r0, r1, lsl #2]
+    34d8:	e1a0182c 	lsr	r1, ip, #16
+    34dc:	e1520001 	cmp	r2, r1
+    34e0:	e241c001 	sub	ip, r1, #1
+    34e4:	2a000002 	bcs	34f4 <CAN_FilterAddId+0x4c0>
+    34e8:	e790410c 	ldr	r4, [r0, ip, lsl #2]
+    34ec:	e1530004 	cmp	r3, r4
+    34f0:	3afffff6 	bcc	34d0 <CAN_FilterAddId+0x49c>
+    34f4:	e59f2170 	ldr	r2, [pc, #368]	; 366c <CAN_FilterAddId+0x638>
+    34f8:	e59fc164 	ldr	ip, [pc, #356]	; 3664 <CAN_FilterAddId+0x630>
+    34fc:	e7823101 	str	r3, [r2, r1, lsl #2]
+    3500:	e59c3010 	ldr	r3, [ip, #16]
+    3504:	e2833004 	add	r3, r3, #4
+    3508:	e58c3010 	str	r3, [ip, #16]
+    350c:	e59c3014 	ldr	r3, [ip, #20]
+    3510:	e2833004 	add	r3, r3, #4
+    3514:	e58c3014 	str	r3, [ip, #20]
+    3518:	e3a00001 	mov	r0, #1
+    351c:	eaffffc1 	b	3428 <CAN_FilterAddId+0x3f4>
+    3520:	e59f1144 	ldr	r1, [pc, #324]	; 366c <CAN_FilterAddId+0x638>
+    3524:	e1a0408c 	lsl	r4, ip, #1
+    3528:	e19410b1 	ldrh	r1, [r4, r1]
+    352c:	e3510a0f 	cmp	r1, #61440	; 0xf000
+    3530:	0affff5f 	beq	32b4 <CAN_FilterAddId+0x280>
+    3534:	e3a00000 	mov	r0, #0
+    3538:	eaffffba 	b	3428 <CAN_FilterAddId+0x3f4>
+    353c:	e1a00004 	mov	r0, r4
+    3540:	eaffffb8 	b	3428 <CAN_FilterAddId+0x3f4>
+    3544:	e1a00005 	mov	r0, r5
+    3548:	eaffffb6 	b	3428 <CAN_FilterAddId+0x3f4>
+    354c:	e3530002 	cmp	r3, #2
+    3550:	93a03000 	movls	r3, #0
+    3554:	82073001 	andhi	r3, r7, #1
+    3558:	e3530000 	cmp	r3, #0
+    355c:	0a000035 	beq	3638 <CAN_FilterAddId+0x604>
+    3560:	e1d230b0 	ldrh	r3, [r2]
+    3564:	e1530004 	cmp	r3, r4
+    3568:	8a000008 	bhi	3590 <CAN_FilterAddId+0x55c>
+    356c:	e1a02100 	lsl	r2, r0, #2
+    3570:	e282220e 	add	r2, r2, #-536870912	; 0xe0000000
+    3574:	e282290e 	add	r2, r2, #229376	; 0x38000
+    3578:	e1a05805 	lsl	r5, r5, #16
+    357c:	e1a04804 	lsl	r4, r4, #16
+    3580:	e1844825 	orr	r4, r4, r5, lsr #16
+    3584:	e5824000 	str	r4, [r2]
+    3588:	e3a00001 	mov	r0, #1
+    358c:	eaffffa5 	b	3428 <CAN_FilterAddId+0x3f4>
+    3590:	e2403001 	sub	r3, r0, #1
+    3594:	e79a2103 	ldr	r2, [sl, r3, lsl #2]
+    3598:	e1a05805 	lsl	r5, r5, #16
+    359c:	e1a05825 	lsr	r5, r5, #16
+    35a0:	e1855802 	orr	r5, r5, r2, lsl #16
+    35a4:	e1a03803 	lsl	r3, r3, #16
+    35a8:	e78a5100 	str	r5, [sl, r0, lsl #2]
+    35ac:	e1a00823 	lsr	r0, r3, #16
+    35b0:	e1a02100 	lsl	r2, r0, #2
+    35b4:	e282220e 	add	r2, r2, #-536870912	; 0xe0000000
+    35b8:	e282290e 	add	r2, r2, #229376	; 0x38000
+    35bc:	e1a0380c 	lsl	r3, ip, #16
+    35c0:	e5925000 	ldr	r5, [r2]
+    35c4:	e1a03823 	lsr	r3, r3, #16
+    35c8:	eaffff8b 	b	33fc <CAN_FilterAddId+0x3c8>
+    35cc:	e0802002 	add	r2, r0, r2
+    35d0:	e1834682 	orr	r4, r3, r2, lsl #13
+    35d4:	e1a04804 	lsl	r4, r4, #16
+    35d8:	e1a04824 	lsr	r4, r4, #16
+    35dc:	e59f3080 	ldr	r3, [pc, #128]	; 3664 <CAN_FilterAddId+0x630>
+    35e0:	e5932008 	ldr	r2, [r3, #8]
+    35e4:	e5930008 	ldr	r0, [r3, #8]
+    35e8:	e1a020a2 	lsr	r2, r2, #1
+    35ec:	e5938004 	ldr	r8, [r3, #4]
+    35f0:	e1a00120 	lsr	r0, r0, #2
+    35f4:	e2423002 	sub	r3, r2, #2
+    35f8:	e2400001 	sub	r0, r0, #1
+    35fc:	e1a03803 	lsl	r3, r3, #16
+    3600:	e1a00800 	lsl	r0, r0, #16
+    3604:	e1a08788 	lsl	r8, r8, #15
+    3608:	e1a03823 	lsr	r3, r3, #16
+    360c:	e1a00820 	lsr	r0, r0, #16
+    3610:	e1a08828 	lsr	r8, r8, #16
+    3614:	eaffff5f 	b	3398 <CAN_FilterAddId+0x364>
+    3618:	e5911014 	ldr	r1, [r1, #20]
+    361c:	e3510b02 	cmp	r1, #2048	; 0x800
+    3620:	0affffc3 	beq	3534 <CAN_FilterAddId+0x500>
+    3624:	e0802002 	add	r2, r0, r2
+    3628:	e1834682 	orr	r4, r3, r2, lsl #13
+    362c:	e1a04804 	lsl	r4, r4, #16
+    3630:	e1a04824 	lsr	r4, r4, #16
+    3634:	eaffff27 	b	32d8 <CAN_FilterAddId+0x2a4>
+    3638:	e1a02100 	lsl	r2, r0, #2
+    363c:	e282220e 	add	r2, r2, #-536870912	; 0xe0000000
+    3640:	e282290e 	add	r2, r2, #229376	; 0x38000
+    3644:	eaffff6f 	b	3408 <CAN_FilterAddId+0x3d4>
+    3648:	e1a02100 	lsl	r2, r0, #2
+    364c:	e282220e 	add	r2, r2, #-536870912	; 0xe0000000
+    3650:	e282290e 	add	r2, r2, #229376	; 0x38000
+    3654:	e2037001 	and	r7, r3, #1
+    3658:	e5925000 	ldr	r5, [r2]
+    365c:	eaffff69 	b	3408 <CAN_FilterAddId+0x3d4>
+    3660:	40000004 	.word	0x40000004
+    3664:	e003c000 	.word	0xe003c000
+    3668:	000007f8 	.word	0x000007f8
+    366c:	e0038000 	.word	0xe0038000
+
+00003670 <CAN_SetFilterMode>:
+    3670:	e59f3014 	ldr	r3, [pc, #20]	; 368c <CAN_SetFilterMode+0x1c>
+    3674:	e5830000 	str	r0, [r3]
+    3678:	e5932000 	ldr	r2, [r3]
+    367c:	e1520000 	cmp	r2, r0
+    3680:	1afffffb 	bne	3674 <CAN_SetFilterMode+0x4>
+    3684:	e3a00001 	mov	r0, #1
+    3688:	e12fff1e 	bx	lr
+    368c:	e003c000 	.word	0xe003c000
+
+00003690 <CAN_InitFilters>:
+    3690:	e52de004 	push	{lr}		; (str lr, [sp, #-4]!)
+    3694:	e24dd024 	sub	sp, sp, #36	; 0x24
+    3698:	e28d0020 	add	r0, sp, #32
+    369c:	e3a03036 	mov	r3, #54	; 0x36
+    36a0:	e520301c 	str	r3, [r0, #-28]!
+    36a4:	e28d1018 	add	r1, sp, #24
+    36a8:	eb00015b 	bl	3c1c <MyIAP>
+    36ac:	e59d201c 	ldr	r2, [sp, #28]
+    36b0:	e59f3060 	ldr	r3, [pc, #96]	; 3718 <CAN_InitFilters+0x88>
+    36b4:	e0633002 	rsb	r3, r3, r2
+    36b8:	e2732000 	rsbs	r2, r3, #0
+    36bc:	e0a22003 	adc	r2, r2, r3
+    36c0:	e59f3054 	ldr	r3, [pc, #84]	; 371c <CAN_InitFilters+0x8c>
+    36c4:	e5c32078 	strb	r2, [r3, #120]	; 0x78
+    36c8:	e59f3050 	ldr	r3, [pc, #80]	; 3720 <CAN_InitFilters+0x90>
+    36cc:	e3a02001 	mov	r2, #1
+    36d0:	e5832000 	str	r2, [r3]
+    36d4:	e59f0048 	ldr	r0, [pc, #72]	; 3724 <CAN_InitFilters+0x94>
+    36d8:	e59f2048 	ldr	r2, [pc, #72]	; 3728 <CAN_InitFilters+0x98>
+    36dc:	e3a01000 	mov	r1, #0
+    36e0:	e4821004 	str	r1, [r2], #4
+    36e4:	e1520000 	cmp	r2, r0
+    36e8:	e3a03000 	mov	r3, #0
+    36ec:	1afffffb 	bne	36e0 <CAN_InitFilters+0x50>
+    36f0:	e59f2028 	ldr	r2, [pc, #40]	; 3720 <CAN_InitFilters+0x90>
+    36f4:	e3a00001 	mov	r0, #1
+    36f8:	e5823004 	str	r3, [r2, #4]
+    36fc:	e5823008 	str	r3, [r2, #8]
+    3700:	e582300c 	str	r3, [r2, #12]
+    3704:	e5823010 	str	r3, [r2, #16]
+    3708:	e5823014 	str	r3, [r2, #20]
+    370c:	e28dd024 	add	sp, sp, #36	; 0x24
+    3710:	e49de004 	pop	{lr}		; (ldr lr, [sp], #4)
+    3714:	e12fff1e 	bx	lr
+    3718:	0301ff13 	.word	0x0301ff13
+    371c:	40000004 	.word	0x40000004
+    3720:	e003c000 	.word	0xe003c000
+    3724:	e0038800 	.word	0xe0038800
+    3728:	e0038000 	.word	0xe0038000
+
+0000372c <CAN_InitChannel>:
+    372c:	e92d07f0 	push	{r4, r5, r6, r7, r8, r9, sl}
+    3730:	e3500001 	cmp	r0, #1
+    3734:	e24dd00c 	sub	sp, sp, #12
+    3738:	83a00000 	movhi	r0, #0
+    373c:	9a000002 	bls	374c <CAN_InitChannel+0x20>
+    3740:	e28dd00c 	add	sp, sp, #12
+    3744:	e8bd07f0 	pop	{r4, r5, r6, r7, r8, r9, sl}
+    3748:	e12fff1e 	bx	lr
+    374c:	e59f82f8 	ldr	r8, [pc, #760]	; 3a4c <CAN_InitChannel+0x320>
+    3750:	e5d83079 	ldrb	r3, [r8, #121]	; 0x79
+    3754:	e3530000 	cmp	r3, #0
+    3758:	1a00000f 	bne	379c <CAN_InitChannel+0x70>
+    375c:	e5d83078 	ldrb	r3, [r8, #120]	; 0x78
+    3760:	e3530000 	cmp	r3, #0
+    3764:	1a00000c 	bne	379c <CAN_InitChannel+0x70>
+    3768:	e58d3000 	str	r3, [sp]
+    376c:	e59d2000 	ldr	r2, [sp]
+    3770:	e59f32d8 	ldr	r3, [pc, #728]	; 3a50 <CAN_InitChannel+0x324>
+    3774:	e1520003 	cmp	r2, r3
+    3778:	8a000005 	bhi	3794 <CAN_InitChannel+0x68>
+    377c:	e59d2000 	ldr	r2, [sp]
+    3780:	e2822001 	add	r2, r2, #1
+    3784:	e58d2000 	str	r2, [sp]
+    3788:	e59d2000 	ldr	r2, [sp]
+    378c:	e1520003 	cmp	r2, r3
+    3790:	9afffff9 	bls	377c <CAN_InitChannel+0x50>
+    3794:	e3a03001 	mov	r3, #1
+    3798:	e5c83079 	strb	r3, [r8, #121]	; 0x79
+    379c:	e59f32b0 	ldr	r3, [pc, #688]	; 3a54 <CAN_InitChannel+0x328>
+    37a0:	e3a02a03 	mov	r2, #12288	; 0x3000
+    37a4:	e583200c 	str	r2, [r3, #12]
+    37a8:	e5932008 	ldr	r2, [r3, #8]
+    37ac:	e3822a03 	orr	r2, r2, #12288	; 0x3000
+    37b0:	e5832008 	str	r2, [r3, #8]
+    37b4:	e59f329c 	ldr	r3, [pc, #668]	; 3a58 <CAN_InitChannel+0x32c>
+    37b8:	e3a02101 	mov	r2, #1073741824	; 0x40000000
+    37bc:	e192c0b3 	ldrh	ip, [r2, r3]
+    37c0:	e3a03000 	mov	r3, #0
+    37c4:	e58d3000 	str	r3, [sp]
+    37c8:	e59d3000 	ldr	r3, [sp]
+    37cc:	e59f4288 	ldr	r4, [pc, #648]	; 3a5c <CAN_InitChannel+0x330>
+    37d0:	e1530004 	cmp	r3, r4
+    37d4:	8a00000b 	bhi	3808 <CAN_InitChannel+0xdc>
+    37d8:	e59d3000 	ldr	r3, [sp]
+    37dc:	e59d2000 	ldr	r2, [sp]
+    37e0:	e1a03083 	lsl	r3, r3, #1
+    37e4:	e2822001 	add	r2, r2, #1
+    37e8:	e2633dff 	rsb	r3, r3, #16320	; 0x3fc0
+    37ec:	e58d2000 	str	r2, [sp]
+    37f0:	e28331f1 	add	r3, r3, #1073741884	; 0x4000003c
+    37f4:	e59d2000 	ldr	r2, [sp]
+    37f8:	e1d330b0 	ldrh	r3, [r3]
+    37fc:	e1520004 	cmp	r2, r4
+    3800:	e02cc003 	eor	ip, ip, r3
+    3804:	9afffff3 	bls	37d8 <CAN_InitChannel+0xac>
+    3808:	e59f6244 	ldr	r6, [pc, #580]	; 3a54 <CAN_InitChannel+0x328>
+    380c:	e59f324c 	ldr	r3, [pc, #588]	; 3a60 <CAN_InitChannel+0x334>
+    3810:	e1a0500c 	mov	r5, ip
+    3814:	e3a04010 	mov	r4, #16
+    3818:	e3a09a02 	mov	r9, #8192	; 0x2000
+    381c:	e3a0aa01 	mov	sl, #4096	; 0x1000
+    3820:	e3a07000 	mov	r7, #0
+    3824:	e3150001 	tst	r5, #1
+    3828:	15869004 	strne	r9, [r6, #4]
+    382c:	0586900c 	streq	r9, [r6, #12]
+    3830:	e586a004 	str	sl, [r6, #4]
+    3834:	e58d7004 	str	r7, [sp, #4]
+    3838:	e59d2004 	ldr	r2, [sp, #4]
+    383c:	e1520003 	cmp	r2, r3
+    3840:	8a000005 	bhi	385c <CAN_InitChannel+0x130>
+    3844:	e59d2004 	ldr	r2, [sp, #4]
+    3848:	e2822001 	add	r2, r2, #1
+    384c:	e58d2004 	str	r2, [sp, #4]
+    3850:	e59d2004 	ldr	r2, [sp, #4]
+    3854:	e1520003 	cmp	r2, r3
+    3858:	9afffff9 	bls	3844 <CAN_InitChannel+0x118>
+    385c:	e586a00c 	str	sl, [r6, #12]
+    3860:	e58d7004 	str	r7, [sp, #4]
+    3864:	e59d2004 	ldr	r2, [sp, #4]
+    3868:	e1520003 	cmp	r2, r3
+    386c:	8a000005 	bhi	3888 <CAN_InitChannel+0x15c>
+    3870:	e59d2004 	ldr	r2, [sp, #4]
+    3874:	e2822001 	add	r2, r2, #1
+    3878:	e58d2004 	str	r2, [sp, #4]
+    387c:	e59d2004 	ldr	r2, [sp, #4]
+    3880:	e1520003 	cmp	r2, r3
+    3884:	9afffff9 	bls	3870 <CAN_InitChannel+0x144>
+    3888:	e2544001 	subs	r4, r4, #1
+    388c:	e1a050a5 	lsr	r5, r5, #1
+    3890:	1affffe3 	bne	3824 <CAN_InitChannel+0xf8>
+    3894:	e59f31b8 	ldr	r3, [pc, #440]	; 3a54 <CAN_InitChannel+0x328>
+    3898:	e5932008 	ldr	r2, [r3, #8]
+    389c:	e3c22a02 	bic	r2, r2, #8192	; 0x2000
+    38a0:	e5832008 	str	r2, [r3, #8]
+    38a4:	e3a02a01 	mov	r2, #4096	; 0x1000
+    38a8:	e5832004 	str	r2, [r3, #4]
+    38ac:	e58d4000 	str	r4, [sp]
+    38b0:	e59d3000 	ldr	r3, [sp]
+    38b4:	e59f21a4 	ldr	r2, [pc, #420]	; 3a60 <CAN_InitChannel+0x334>
+    38b8:	e1530002 	cmp	r3, r2
+    38bc:	8a000005 	bhi	38d8 <CAN_InitChannel+0x1ac>
+    38c0:	e59d3000 	ldr	r3, [sp]
+    38c4:	e2833001 	add	r3, r3, #1
+    38c8:	e58d3000 	str	r3, [sp]
+    38cc:	e59d3000 	ldr	r3, [sp]
+    38d0:	e1530002 	cmp	r3, r2
+    38d4:	9afffff9 	bls	38c0 <CAN_InitChannel+0x194>
+    38d8:	e3a04000 	mov	r4, #0
+    38dc:	e59f5170 	ldr	r5, [pc, #368]	; 3a54 <CAN_InitChannel+0x328>
+    38e0:	e59f3178 	ldr	r3, [pc, #376]	; 3a60 <CAN_InitChannel+0x334>
+    38e4:	e3a06010 	mov	r6, #16
+    38e8:	e3a0aa01 	mov	sl, #4096	; 0x1000
+    38ec:	e1a07004 	mov	r7, r4
+    38f0:	e585a004 	str	sl, [r5, #4]
+    38f4:	e58d7004 	str	r7, [sp, #4]
+    38f8:	e59d2004 	ldr	r2, [sp, #4]
+    38fc:	e1520003 	cmp	r2, r3
+    3900:	8a000005 	bhi	391c <CAN_InitChannel+0x1f0>
+    3904:	e59d2004 	ldr	r2, [sp, #4]
+    3908:	e2822001 	add	r2, r2, #1
+    390c:	e58d2004 	str	r2, [sp, #4]
+    3910:	e59d2004 	ldr	r2, [sp, #4]
+    3914:	e1520003 	cmp	r2, r3
+    3918:	9afffff9 	bls	3904 <CAN_InitChannel+0x1d8>
+    391c:	e5952000 	ldr	r2, [r5]
+    3920:	e1a040a4 	lsr	r4, r4, #1
+    3924:	e3120a02 	tst	r2, #8192	; 0x2000
+    3928:	11e04884 	mvnne	r4, r4, lsl #17
+    392c:	e585a00c 	str	sl, [r5, #12]
+    3930:	e58d7004 	str	r7, [sp, #4]
+    3934:	11e048a4 	mvnne	r4, r4, lsr #17
+    3938:	e59d2004 	ldr	r2, [sp, #4]
+    393c:	11a04804 	lslne	r4, r4, #16
+    3940:	11a04824 	lsrne	r4, r4, #16
+    3944:	e1520003 	cmp	r2, r3
+    3948:	8a000005 	bhi	3964 <CAN_InitChannel+0x238>
+    394c:	e59d2004 	ldr	r2, [sp, #4]
+    3950:	e2822001 	add	r2, r2, #1
+    3954:	e58d2004 	str	r2, [sp, #4]
+    3958:	e59d2004 	ldr	r2, [sp, #4]
+    395c:	e1520003 	cmp	r2, r3
+    3960:	9afffff9 	bls	394c <CAN_InitChannel+0x220>
+    3964:	e2566001 	subs	r6, r6, #1
+    3968:	1affffe0 	bne	38f0 <CAN_InitChannel+0x1c4>
+    396c:	e59f30f0 	ldr	r3, [pc, #240]	; 3a64 <CAN_InitChannel+0x338>
+    3970:	e3a02010 	mov	r2, #16
+    3974:	e2036a0a 	and	r6, r3, #40960	; 0xa000
+    3978:	e20c5001 	and	r5, ip, #1
+    397c:	e3560000 	cmp	r6, #0
+    3980:	12255001 	eorne	r5, r5, #1
+    3984:	e1a03883 	lsl	r3, r3, #17
+    3988:	e2522001 	subs	r2, r2, #1
+    398c:	e1853823 	orr	r3, r5, r3, lsr #16
+    3990:	e1a0c0ac 	lsr	ip, ip, #1
+    3994:	1afffff6 	bne	3974 <CAN_InitChannel+0x248>
+    3998:	e1540003 	cmp	r4, r3
+    399c:	0a000000 	beq	39a4 <CAN_InitChannel+0x278>
+    39a0:	eafffffe 	b	39a0 <CAN_InitChannel+0x274>
+    39a4:	e0602200 	rsb	r2, r0, r0, lsl #4
+    39a8:	e1a02102 	lsl	r2, r2, #2
+    39ac:	e0883002 	add	r3, r8, r2
+    39b0:	e19840b2 	ldrh	r4, [r8, r2]
+    39b4:	e5932034 	ldr	r2, [r3, #52]	; 0x34
+    39b8:	e593c008 	ldr	ip, [r3, #8]
+    39bc:	e2445001 	sub	r5, r4, #1
+    39c0:	e3520000 	cmp	r2, #0
+    39c4:	e59f209c 	ldr	r2, [pc, #156]	; 3a68 <CAN_InitChannel+0x33c>
+    39c8:	e08c5205 	add	r5, ip, r5, lsl #4
+    39cc:	e7922100 	ldr	r2, [r2, r0, lsl #2]
+    39d0:	e583c018 	str	ip, [r3, #24]
+    39d4:	e583c01c 	str	ip, [r3, #28]
+    39d8:	e583500c 	str	r5, [r3, #12]
+    39dc:	e1c340b2 	strh	r4, [r3, #2]
+    39e0:	0a000010 	beq	3a28 <CAN_InitChannel+0x2fc>
+    39e4:	e1d3c0b4 	ldrh	ip, [r3, #4]
+    39e8:	e5930010 	ldr	r0, [r3, #16]
+    39ec:	e24c4001 	sub	r4, ip, #1
+    39f0:	e0844104 	add	r4, r4, r4, lsl #2
+    39f4:	e0804104 	add	r4, r0, r4, lsl #2
+    39f8:	e5830020 	str	r0, [r3, #32]
+    39fc:	e5830024 	str	r0, [r3, #36]	; 0x24
+    3a00:	e5834014 	str	r4, [r3, #20]
+    3a04:	e1c3c0b6 	strh	ip, [r3, #6]
+    3a08:	e5821014 	str	r1, [r2, #20]
+    3a0c:	e5920014 	ldr	r0, [r2, #20]
+    3a10:	e1500001 	cmp	r0, r1
+    3a14:	1afffffb 	bne	3a08 <CAN_InitChannel+0x2dc>
+    3a18:	e5d33038 	ldrb	r3, [r3, #56]	; 0x38
+    3a1c:	e3a00001 	mov	r0, #1
+    3a20:	e5823018 	str	r3, [r2, #24]
+    3a24:	eaffff45 	b	3740 <CAN_InitChannel+0x14>
+    3a28:	e1d3c0b4 	ldrh	ip, [r3, #4]
+    3a2c:	e5930010 	ldr	r0, [r3, #16]
+    3a30:	e24c4001 	sub	r4, ip, #1
+    3a34:	e0804204 	add	r4, r0, r4, lsl #4
+    3a38:	e5830020 	str	r0, [r3, #32]
+    3a3c:	e5830024 	str	r0, [r3, #36]	; 0x24
+    3a40:	e5834014 	str	r4, [r3, #20]
+    3a44:	e1c3c0b6 	strh	ip, [r3, #6]
+    3a48:	eaffffee 	b	3a08 <CAN_InitChannel+0x2dc>
+    3a4c:	40000004 	.word	0x40000004
+    3a50:	000aae5f 	.word	0x000aae5f
+    3a54:	e0028000 	.word	0xe0028000
+    3a58:	00003ffe 	.word	0x00003ffe
+    3a5c:	000003ff 	.word	0x000003ff
+    3a60:	00000211 	.word	0x00000211
+    3a64:	000093e5 	.word	0x000093e5
+    3a68:	00003c30 	.word	0x00003c30
+
+00003a6c <CAN_ReInitChannel>:
+    3a6c:	e3500001 	cmp	r0, #1
+    3a70:	e92d0030 	push	{r4, r5}
+    3a74:	9a000002 	bls	3a84 <CAN_ReInitChannel+0x18>
+    3a78:	e3a00000 	mov	r0, #0
+    3a7c:	e8bd0030 	pop	{r4, r5}
+    3a80:	e12fff1e 	bx	lr
+    3a84:	e59f4064 	ldr	r4, [pc, #100]	; 3af0 <CAN_ReInitChannel+0x84>
+    3a88:	e060c200 	rsb	ip, r0, r0, lsl #4
+    3a8c:	e1a0c10c 	lsl	ip, ip, #2
+    3a90:	e084300c 	add	r3, r4, ip
+    3a94:	e593100c 	ldr	r1, [r3, #12]
+    3a98:	e5932008 	ldr	r2, [r3, #8]
+    3a9c:	e1510002 	cmp	r1, r2
+    3aa0:	e59f104c 	ldr	r1, [pc, #76]	; 3af4 <CAN_ReInitChannel+0x88>
+    3aa4:	e7915100 	ldr	r5, [r1, r0, lsl #2]
+    3aa8:	e5931010 	ldr	r1, [r3, #16]
+    3aac:	0a00000b 	beq	3ae0 <CAN_ReInitChannel+0x74>
+    3ab0:	e19440bc 	ldrh	r4, [r4, ip]
+    3ab4:	e1d300b4 	ldrh	r0, [r3, #4]
+    3ab8:	e5d3c038 	ldrb	ip, [r3, #56]	; 0x38
+    3abc:	e1c340b2 	strh	r4, [r3, #2]
+    3ac0:	e5832018 	str	r2, [r3, #24]
+    3ac4:	e1c300b6 	strh	r0, [r3, #6]
+    3ac8:	e583201c 	str	r2, [r3, #28]
+    3acc:	e5831020 	str	r1, [r3, #32]
+    3ad0:	e5831024 	str	r1, [r3, #36]	; 0x24
+    3ad4:	e3a00001 	mov	r0, #1
+    3ad8:	e585c018 	str	ip, [r5, #24]
+    3adc:	eaffffe6 	b	3a7c <CAN_ReInitChannel+0x10>
+    3ae0:	e5930014 	ldr	r0, [r3, #20]
+    3ae4:	e1500001 	cmp	r0, r1
+    3ae8:	1afffff0 	bne	3ab0 <CAN_ReInitChannel+0x44>
+    3aec:	eaffffe1 	b	3a78 <CAN_ReInitChannel+0xc>
+    3af0:	40000004 	.word	0x40000004
+    3af4:	00003c30 	.word	0x00003c30
+
+00003af8 <HandleTxErrInt>:
+    3af8:	e92d4038 	push	{r3, r4, r5, lr}
+    3afc:	e59f3038 	ldr	r3, [pc, #56]	; 3b3c <HandleTxErrInt+0x44>
+    3b00:	e0602200 	rsb	r2, r0, r0, lsl #4
+    3b04:	e0833102 	add	r3, r3, r2, lsl #2
+    3b08:	e5935030 	ldr	r5, [r3, #48]	; 0x30
+    3b0c:	e3550000 	cmp	r5, #0
+    3b10:	e1a04000 	mov	r4, r0
+    3b14:	0a000003 	beq	3b28 <HandleTxErrInt+0x30>
+    3b18:	e1a0e00f 	mov	lr, pc
+    3b1c:	e12fff15 	bx	r5
+    3b20:	e8bd4038 	pop	{r3, r4, r5, lr}
+    3b24:	e12fff1e 	bx	lr
+    3b28:	ebffffcf 	bl	3a6c <CAN_ReInitChannel>
+    3b2c:	e1a00004 	mov	r0, r4
+    3b30:	e1a01005 	mov	r1, r5
+    3b34:	e8bd4038 	pop	{r3, r4, r5, lr}
+    3b38:	eafffc62 	b	2cc8 <CAN_SetBusMode>
+    3b3c:	40000004 	.word	0x40000004
+
+00003b40 <CAN_ISR>:
+    3b40:	e24ee004 	sub	lr, lr, #4
+    3b44:	e92d50ff 	push	{r0, r1, r2, r3, r4, r5, r6, r7, ip, lr}
+    3b48:	e59f50c4 	ldr	r5, [pc, #196]	; 3c14 <CAN_ISR+0xd4>
+    3b4c:	e3a06008 	mov	r6, #8
+    3b50:	e595400c 	ldr	r4, [r5, #12]
+    3b54:	e3140002 	tst	r4, #2
+    3b58:	e204408b 	and	r4, r4, #139	; 0x8b
+    3b5c:	1a000029 	bne	3c08 <CAN_ISR+0xc8>
+    3b60:	e3140001 	tst	r4, #1
+    3b64:	1a000024 	bne	3bfc <CAN_ISR+0xbc>
+    3b68:	e3140080 	tst	r4, #128	; 0x80
+    3b6c:	1a00001f 	bne	3bf0 <CAN_ISR+0xb0>
+    3b70:	e3140008 	tst	r4, #8
+    3b74:	15856004 	strne	r6, [r5, #4]
+    3b78:	1afffff4 	bne	3b50 <CAN_ISR+0x10>
+    3b7c:	e3540000 	cmp	r4, #0
+    3b80:	1afffff2 	bne	3b50 <CAN_ISR+0x10>
+    3b84:	e59f508c 	ldr	r5, [pc, #140]	; 3c18 <CAN_ISR+0xd8>
+    3b88:	e3a06008 	mov	r6, #8
+    3b8c:	e595400c 	ldr	r4, [r5, #12]
+    3b90:	e3140002 	tst	r4, #2
+    3b94:	e204408b 	and	r4, r4, #139	; 0x8b
+    3b98:	1a000011 	bne	3be4 <CAN_ISR+0xa4>
+    3b9c:	e3140001 	tst	r4, #1
+    3ba0:	1a00000c 	bne	3bd8 <CAN_ISR+0x98>
+    3ba4:	e3140080 	tst	r4, #128	; 0x80
+    3ba8:	1a000007 	bne	3bcc <CAN_ISR+0x8c>
+    3bac:	e3140008 	tst	r4, #8
+    3bb0:	15856004 	strne	r6, [r5, #4]
+    3bb4:	1afffff4 	bne	3b8c <CAN_ISR+0x4c>
+    3bb8:	e3540000 	cmp	r4, #0
+    3bbc:	1afffff2 	bne	3b8c <CAN_ISR+0x4c>
+    3bc0:	e3e03000 	mvn	r3, #0
+    3bc4:	e5033fcf 	str	r3, [r3, #-4047]	; 0xfcf
+    3bc8:	e8fd90ff 	ldm	sp!, {r0, r1, r2, r3, r4, r5, r6, r7, ip, pc}^
+    3bcc:	e3a00001 	mov	r0, #1
+    3bd0:	ebffffc8 	bl	3af8 <HandleTxErrInt>
+    3bd4:	eafffff4 	b	3bac <CAN_ISR+0x6c>
+    3bd8:	e3a00001 	mov	r0, #1
+    3bdc:	ebfffb7b 	bl	29d0 <HandleRxInt>
+    3be0:	eaffffef 	b	3ba4 <CAN_ISR+0x64>
+    3be4:	e3a00001 	mov	r0, #1
+    3be8:	ebfffb46 	bl	2908 <HandleTxInt>
+    3bec:	eaffffea 	b	3b9c <CAN_ISR+0x5c>
+    3bf0:	e3a00000 	mov	r0, #0
+    3bf4:	ebffffbf 	bl	3af8 <HandleTxErrInt>
+    3bf8:	eaffffdc 	b	3b70 <CAN_ISR+0x30>
+    3bfc:	e3a00000 	mov	r0, #0
+    3c00:	ebfffb72 	bl	29d0 <HandleRxInt>
+    3c04:	eaffffd7 	b	3b68 <CAN_ISR+0x28>
+    3c08:	e3a00000 	mov	r0, #0
+    3c0c:	ebfffb3d 	bl	2908 <HandleTxInt>
+    3c10:	eaffffd2 	b	3b60 <CAN_ISR+0x20>
+    3c14:	e0044000 	.word	0xe0044000
+    3c18:	e0048000 	.word	0xe0048000
+
+00003c1c <MyIAP>:
+    3c1c:	e3e0313a 	mvn	r3, #-2147483634	; 0x8000000e
+    3c20:	e12fff13 	bx	r3
+
+00003c24 <Ident>:
+    3c24:	4e414350 756f522d 00726574              PCAN-Router.
+
+00003c30 <RegBase>:
+    3c30:	e0044000 e0048000 e004c000 e0050000     .@..............

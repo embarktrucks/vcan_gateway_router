@@ -1,0 +1,427 @@
+Archive member included because of file (symbol)
+
+libPCAN-RouterGNU2.0.1ys.a(hardware.o)
+                              main.o (HW_SetLED)
+libPCAN-RouterGNU2.0.1ys.a(can.o)
+                              can_user.o (CAN_ReferenceTxQueue)
+libPCAN-RouterGNU2.0.1ys.a(thumb_glue.o)
+                              libPCAN-RouterGNU2.0.1ys.a(can.o) (MyIAP)
+
+Allocating common symbols
+Common symbol       size              file
+
+RxQueueCAN2         0x100             can_user.o
+TxQueueCAN2         0x80              can_user.o
+TxQueueCAN1         0x80              can_user.o
+RxQueueCAN1         0x100             can_user.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+ROM              0x00002000         0x0003c000         xr
+RAM              0x40000000         0x00004000         rw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+LOAD crt0.o
+LOAD main.o
+LOAD can_user.o
+LOAD libPCAN-RouterGNU2.0.1ys.a
+LOAD c:/yagarto-20121222/bin/../lib/gcc/arm-none-eabi/4.7.2/../../../../arm-none-eabi/lib\libc.a
+LOAD c:/yagarto-20121222/bin/../lib/gcc/arm-none-eabi/4.7.2/../../../../arm-none-eabi/lib\libm.a
+LOAD c:/yagarto-20121222/bin/../lib/gcc/arm-none-eabi/4.7.2/../../../../arm-none-eabi/lib\libc.a
+LOAD c:/yagarto-20121222/bin/../lib/gcc/arm-none-eabi/4.7.2\libgcc.a
+LOAD c:/yagarto-20121222/bin/../lib/gcc/arm-none-eabi/4.7.2/../../../../arm-none-eabi/lib\libstdc++.a
+START GROUP
+LOAD c:/yagarto-20121222/bin/../lib/gcc/arm-none-eabi/4.7.2\libgcc.a
+LOAD c:/yagarto-20121222/bin/../lib/gcc/arm-none-eabi/4.7.2/../../../../arm-none-eabi/lib\libg.a
+LOAD c:/yagarto-20121222/bin/../lib/gcc/arm-none-eabi/4.7.2/../../../../arm-none-eabi/lib\libc.a
+END GROUP
+                0x00000008                UND_Stack_Size = 0x8
+                0x00000008                ABT_Stack_Size = 0x8
+                0x00000008                FIQ_Stack_Size = 0x8
+                0x00000100                IRQ_Stack_Size = 0x100
+                0x00000008                SVC_Stack_Size = 0x8
+                0x00000200                USR_Stack_Size = 0x200
+
+.text           0x00002000     0x1c40
+ *(.init)
+ .init          0x00002000      0x1a4 crt0.o
+                0x00002000                _boot
+                0x00002050                _mainCRTStartup
+                0x00002050                _start
+                0x00002050                start
+                0x0000215c                _reset
+                0x0000215c                exit
+                0x0000215c                abort
+                0x0000215c                reset
+ *(.text .text.*)
+ .text          0x000021a4        0x0 crt0.o
+ .text          0x000021a4        0x0 main.o
+ .text.startup  0x000021a4      0x1f0 main.o
+                0x000021a4                main
+ .text          0x00002394      0x268 can_user.o
+                0x00002394                CAN_UserWrite
+                0x000023e8                CAN_UserRead
+                0x0000243c                CAN_UserInit
+ .text          0x000025fc      0x30c libPCAN-RouterGNU2.0.1ys.a(hardware.o)
+                0x00002614                HW_GetModuleID
+                0x0000263c                HW_SetLED
+                0x0000278c                HW_GetDIN
+                0x000027c0                HW_JumpToBootloader
+                0x00002840                HW_Init
+ .text          0x00002908     0x1314 libPCAN-RouterGNU2.0.1ys.a(can.o)
+                0x00002af4                CAN_ReferenceTxQueue
+                0x00002b40                CAN_ReferenceRxQueue
+                0x00002b88                CAN_GetIsrVector
+                0x00002b94                CAN_SetAtomicHandler
+                0x00002bd8                CAN_SetUnatomicHandler
+                0x00002bf4                CAN_SetTimestampHandler
+                0x00002c18                CAN_SetErrorLimit
+                0x00002c3c                CAN_SetRxCallback
+                0x00002c60                CAN_SetChannelInfo
+                0x00002c84                CAN_GetChannelInfo
+                0x00002ca4                CAN_SetTxErrorCallback
+                0x00002cc8                CAN_SetBusMode
+                0x00002d3c                CAN_TxQueueGetNext
+                0x00002d8c                CAN_RxQueueGetNext
+                0x00002de0                CAN_TxQueueWriteNext
+                0x00002efc                CAN_RxQueueReadNext
+                0x00002f84                CAN_GetTransceiverType
+                0x00002fac                CAN_SetTransceiverMode
+                0x00003034                CAN_FilterAddId
+                0x00003670                CAN_SetFilterMode
+                0x00003690                CAN_InitFilters
+                0x0000372c                CAN_InitChannel
+                0x00003a6c                CAN_ReInitChannel
+ .text          0x00003c1c        0x8 libPCAN-RouterGNU2.0.1ys.a(thumb_glue.o)
+                0x00003c1c                MyIAP
+ *(.gnu.linkonce.t.*)
+ *(.glue_7)
+ .glue_7        0x00000000        0x0 linker stubs
+ *(.glue_7t)
+ .glue_7t       0x00000000        0x0 linker stubs
+ *(.gcc_except_table)
+ *(.rodata)
+ .rodata        0x00003c24        0xc main.o
+                0x00003c24                Ident
+ .rodata        0x00003c30       0x10 libPCAN-RouterGNU2.0.1ys.a(can.o)
+ *(.rodata*)
+ *(.gnu.linkonce.r.*)
+
+.vfp11_veneer   0x00003c40        0x0
+ .vfp11_veneer  0x00000000        0x0 linker stubs
+
+.v4_bx          0x00003c40        0x0
+ .v4_bx         0x00000000        0x0 linker stubs
+
+.iplt           0x00003c40        0x0
+ .iplt          0x00000000        0x0 crt0.o
+                0x00003c40                . = ALIGN (0x4)
+
+.ctors          0x00003c40        0x0
+                0x00003c40                PROVIDE (__ctors_start__, .)
+ *(SORT(.ctors.*))
+ *(.ctors)
+                0x00003c40                PROVIDE (__ctors_end__, .)
+
+.dtors          0x00003c40        0x0
+                0x00003c40                PROVIDE (__dtors_start__, .)
+ *(SORT(.dtors.*))
+ *(.dtors)
+                0x00003c40                PROVIDE (__dtors_end__, .)
+                0x00003c40                . = ALIGN (0x4)
+                0x00003c40                _etext = .
+                0x00003c40                PROVIDE (etext, .)
+
+.data           0x40000000        0x0 load address 0x00003c40
+                0x40000000                _data = .
+ *(.data)
+ .data          0x40000000        0x0 crt0.o
+ .data          0x40000000        0x0 main.o
+ .data          0x40000000        0x0 can_user.o
+ .data          0x40000000        0x0 libPCAN-RouterGNU2.0.1ys.a(hardware.o)
+ .data          0x40000000        0x0 libPCAN-RouterGNU2.0.1ys.a(can.o)
+ .data          0x40000000        0x0 libPCAN-RouterGNU2.0.1ys.a(thumb_glue.o)
+ *(.data.*)
+ *(.gnu.linkonce.d*)
+                0x40000000                . = ALIGN (0x4)
+ *(.fastrun)
+
+.igot.plt       0x40000000        0x0 load address 0x00003c40
+ .igot.plt      0x00000000        0x0 crt0.o
+                0x40000000                . = ALIGN (0x4)
+                0x40000000                _edata = .
+                0x40000000                PROVIDE (edata, .)
+
+.C2F_Info       0x0003df00       0x30
+ *(.C2F_Info)
+ .C2F_Info      0x0003df00       0x24 main.o
+                0x0003df00                C2F_Array
+                0x0003df24        0x2 SHORT 0x1
+                0x0003df26        0x4 LONG 0x2000
+                0x0003df2a        0x4 LONG 0x1c40 ((_etext + SIZEOF (.data)) - 0x2000)
+                0x0003df2e        0x2 SHORT 0x0
+
+.rel.dyn        0x0003df30        0x0
+ .rel.iplt      0x00000000        0x0 crt0.o
+
+.bss            0x40000000      0x380 load address 0x00003c40
+                0x40000000                __bss_start = .
+                0x40000000                __bss_start__ = .
+ *(.bss)
+ .bss           0x40000000        0x0 crt0.o
+ .bss           0x40000000        0x2 main.o
+ .bss           0x40000002        0x0 can_user.o
+ .bss           0x40000002        0x0 libPCAN-RouterGNU2.0.1ys.a(hardware.o)
+ *fill*         0x40000002        0x2 
+ .bss           0x40000004       0x7c libPCAN-RouterGNU2.0.1ys.a(can.o)
+ .bss           0x40000080        0x0 libPCAN-RouterGNU2.0.1ys.a(thumb_glue.o)
+ *(.gnu.linkonce.b*)
+ *(COMMON)
+ COMMON         0x40000080      0x300 can_user.o
+                0x40000080                RxQueueCAN2
+                0x40000180                TxQueueCAN2
+                0x40000200                TxQueueCAN1
+                0x40000280                RxQueueCAN1
+                0x40000380                . = ALIGN (0x4)
+                0x40000380                . = ALIGN (0x4)
+                0x40000380                __bss_end__ = .
+                0x40000380                PROVIDE (__bss_end, .)
+
+.stack          0x40000380      0x320 load address 0x00003fc0
+                0x40000380                . = ALIGN (0x8)
+                0x40000580                . = (. + USR_Stack_Size)
+ *fill*         0x40000380      0x200 
+                0x40000580                PROVIDE (_USRStackTop, .)
+                0x40000588                . = (. + SVC_Stack_Size)
+ *fill*         0x40000580        0x8 
+                0x40000588                PROVIDE (_SVCStackTop, .)
+                0x40000688                . = (. + IRQ_Stack_Size)
+ *fill*         0x40000588      0x100 
+                0x40000688                PROVIDE (_IRQStackTop, .)
+                0x40000690                . = (. + FIQ_Stack_Size)
+ *fill*         0x40000688        0x8 
+                0x40000690                PROVIDE (_FIQStackTop, .)
+                0x40000698                . = (. + ABT_Stack_Size)
+ *fill*         0x40000690        0x8 
+                0x40000698                PROVIDE (_ABTStackTop, .)
+                0x400006a0                . = (. + UND_Stack_Size)
+ *fill*         0x40000698        0x8 
+                0x400006a0                PROVIDE (_UNDStackTop, .)
+                0x400006a0                _end = .
+                0x400006a0                PROVIDE (end, .)
+
+.stab
+ *(.stab)
+
+.stabstr
+ *(.stabstr)
+
+.stab.excl
+ *(.stab.excl)
+
+.stab.exclstr
+ *(.stab.exclstr)
+
+.stab.index
+ *(.stab.index)
+
+.stab.indexstr
+ *(.stab.indexstr)
+
+.comment        0x00000000       0x22
+ *(.comment)
+ .comment       0x00000000       0x11 main.o
+                                 0x12 (size before relaxing)
+ .comment       0x00000000       0x12 can_user.o
+ .comment       0x00000011       0x11 libPCAN-RouterGNU2.0.1ys.a(hardware.o)
+                                 0x12 (size before relaxing)
+ .comment       0x00000000       0x12 libPCAN-RouterGNU2.0.1ys.a(can.o)
+
+.ARM.attributes
+                0x00000000       0x30
+ .ARM.attributes
+                0x00000000       0x22 crt0.o
+ .ARM.attributes
+                0x00000022       0x32 main.o
+ .ARM.attributes
+                0x00000054       0x32 can_user.o
+ .ARM.attributes
+                0x00000086       0x34 libPCAN-RouterGNU2.0.1ys.a(hardware.o)
+ .ARM.attributes
+                0x000000ba       0x34 libPCAN-RouterGNU2.0.1ys.a(can.o)
+ .ARM.attributes
+                0x000000ee       0x24 libPCAN-RouterGNU2.0.1ys.a(thumb_glue.o)
+
+.debug
+ *(.debug)
+
+.line
+ *(.line)
+
+.debug_srcinfo
+ *(.debug_srcinfo)
+
+.debug_sfnames
+ *(.debug_sfnames)
+
+.debug_aranges  0x00000000       0x80
+ *(.debug_aranges)
+ .debug_aranges
+                0x00000000       0x20 crt0.o
+ .debug_aranges
+                0x00000020       0x20 main.o
+ .debug_aranges
+                0x00000040       0x20 can_user.o
+ .debug_aranges
+                0x00000060       0x20 libPCAN-RouterGNU2.0.1ys.a(thumb_glue.o)
+
+.debug_pubnames
+ *(.debug_pubnames)
+
+.debug_info     0x00000000      0xdc3
+ *(.debug_info .gnu.linkonce.wi.*)
+ .debug_info    0x00000000       0x68 crt0.o
+ .debug_info    0x00000068      0x4dc main.o
+ .debug_info    0x00000544      0x7fd can_user.o
+ .debug_info    0x00000d41       0x82 libPCAN-RouterGNU2.0.1ys.a(thumb_glue.o)
+
+.debug_abbrev   0x00000000      0x3e2
+ *(.debug_abbrev)
+ .debug_abbrev  0x00000000       0x14 crt0.o
+ .debug_abbrev  0x00000014      0x1fc main.o
+ .debug_abbrev  0x00000210      0x1be can_user.o
+ .debug_abbrev  0x000003ce       0x14 libPCAN-RouterGNU2.0.1ys.a(thumb_glue.o)
+
+.debug_line     0x00000000      0x259
+ *(.debug_line)
+ .debug_line    0x00000000       0xae crt0.o
+ .debug_line    0x000000ae       0xc4 main.o
+ .debug_line    0x00000172       0xa4 can_user.o
+ .debug_line    0x00000216       0x43 libPCAN-RouterGNU2.0.1ys.a(thumb_glue.o)
+
+.debug_frame    0x00000000       0x9c
+ *(.debug_frame)
+ .debug_frame   0x00000000       0x2c main.o
+ .debug_frame   0x0000002c       0x70 can_user.o
+
+.debug_str      0x00000000      0x36c
+ *(.debug_str)
+ .debug_str     0x00000000      0x1c2 main.o
+                                0x1e5 (size before relaxing)
+ .debug_str     0x000001c2      0x1aa can_user.o
+                                0x2c7 (size before relaxing)
+
+.debug_loc      0x00000000      0x1c0
+ *(.debug_loc)
+ .debug_loc     0x00000000       0x67 main.o
+ .debug_loc     0x00000067      0x159 can_user.o
+
+.debug_macinfo
+ *(.debug_macinfo)
+
+.debug_weaknames
+ *(.debug_weaknames)
+
+.debug_funcnames
+ *(.debug_funcnames)
+
+.debug_typenames
+ *(.debug_typenames)
+
+.debug_varnames
+ *(.debug_varnames)
+OUTPUT(vcan_router.elf elf32-littlearm)
+
+.debug_ranges   0x00000000       0x78
+ .debug_ranges  0x00000000       0x78 main.o
+
+Cross Reference Table
+
+Symbol                                            File
+C2F_Array                                         main.o
+CAN_FilterAddId                                   libPCAN-RouterGNU2.0.1ys.a(can.o)
+CAN_GetChannelInfo                                libPCAN-RouterGNU2.0.1ys.a(can.o)
+CAN_GetIsrVector                                  libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_GetTransceiverType                            libPCAN-RouterGNU2.0.1ys.a(can.o)
+CAN_InitChannel                                   libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_InitFilters                                   libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_ReInitChannel                                 libPCAN-RouterGNU2.0.1ys.a(can.o)
+CAN_ReferenceRxQueue                              libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_ReferenceTxQueue                              libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_RxQueueGetNext                                libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_RxQueueReadNext                               libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_SetAtomicHandler                              libPCAN-RouterGNU2.0.1ys.a(can.o)
+CAN_SetBusMode                                    libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_SetChannelInfo                                libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_SetErrorLimit                                 libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_SetFilterMode                                 libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_SetRxCallback                                 libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_SetTimestampHandler                           libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_SetTransceiverMode                            libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_SetTxErrorCallback                            libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_SetUnatomicHandler                            libPCAN-RouterGNU2.0.1ys.a(can.o)
+CAN_TxQueueGetNext                                libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_TxQueueWriteNext                              libPCAN-RouterGNU2.0.1ys.a(can.o)
+                                                  can_user.o
+CAN_UserInit                                      can_user.o
+                                                  main.o
+CAN_UserRead                                      can_user.o
+                                                  main.o
+CAN_UserWrite                                     can_user.o
+                                                  main.o
+HW_GetDIN                                         libPCAN-RouterGNU2.0.1ys.a(hardware.o)
+HW_GetModuleID                                    libPCAN-RouterGNU2.0.1ys.a(hardware.o)
+HW_Init                                           libPCAN-RouterGNU2.0.1ys.a(hardware.o)
+                                                  main.o
+HW_JumpToBootloader                               libPCAN-RouterGNU2.0.1ys.a(hardware.o)
+HW_SetLED                                         libPCAN-RouterGNU2.0.1ys.a(hardware.o)
+                                                  main.o
+Ident                                             main.o
+MyIAP                                             libPCAN-RouterGNU2.0.1ys.a(thumb_glue.o)
+                                                  libPCAN-RouterGNU2.0.1ys.a(can.o)
+RxQueueCAN1                                       can_user.o
+RxQueueCAN2                                       can_user.o
+TxQueueCAN1                                       can_user.o
+TxQueueCAN2                                       can_user.o
+_ABTStackTop                                      crt0.o
+_FIQStackTop                                      crt0.o
+_IRQStackTop                                      crt0.o
+_SVCStackTop                                      crt0.o
+_UNDStackTop                                      crt0.o
+_USRStackTop                                      crt0.o
+__bss_end__                                       crt0.o
+__bss_start                                       crt0.o
+__ctors_end__                                     crt0.o
+__ctors_start__                                   crt0.o
+_boot                                             crt0.o
+_data                                             crt0.o
+_edata                                            crt0.o
+_etext                                            crt0.o
+_mainCRTStartup                                   crt0.o
+_reset                                            crt0.o
+_start                                            crt0.o
+abort                                             crt0.o
+exit                                              crt0.o
+main                                              main.o
+                                                  crt0.o
+reset                                             crt0.o
+start                                             crt0.o
