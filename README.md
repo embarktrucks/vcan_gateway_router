@@ -1,5 +1,5 @@
 # VCAN Router
-Truck 312, with all systems running, experiences higher than average bus load (~58%), while most other trucks operate closer to 50%. This is patch to lower the bus load on VCAN bus to mitigate intermittent Form Errors seen on the bus.
+Integration testing on Truck 312, with all systems running, showed higher than average bus load (~58%), while most other trucks operate closer to 50%. This is patch to lower the bus load on VCAN bus to mitigate intermittent Form Errors seen on the bus.
 
 # Requirements
 - Uses a PCAN Router [link here](https://www.peak-system.com/PCAN-Router.228.0.html?&L=1)
@@ -19,7 +19,6 @@ All except blacklisted messages from CAN1 are forwarded to CAN2. All messages fr
 
 
 # Blacklisted Messages
-Blacklist =
 - SWFDBKA_D2XX
 - SWFDBKB_D2XX
 - RQST_SC_D2XX
