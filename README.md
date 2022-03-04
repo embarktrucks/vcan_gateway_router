@@ -66,3 +66,6 @@ All except blacklisted messages from CAN1 are forwarded to CAN2. All messages fr
 # Hook up (Truck Install)
 - Connect CAN 1 of the router at the VCAN extension behind the green 9-pin OEM diagnostic port
 - Connect CAN 2 into the daisy-chain (twisted pair at the end of the M12 cable connected to the VCAN hub)
+
+# Reverting to Default Firmware
+To revert to original firmware, first rename the file "main_original_fw.c" to "main.c" then rename or remove the main.c associated with the filtering active firmware. Now you'll be able to run the "make clean" then "make all" commands to wipe the last created .bin file, and create the .bin associated with the original/out-of-the-box functionality.
