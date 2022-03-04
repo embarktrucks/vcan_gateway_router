@@ -9,7 +9,7 @@
 # define FALSE 0
 
 /*
-* SCAN Router
+* VCAN Router
 * Copyright: Embark Trucks 2022
 * Author: Austin Robinson
 * Two way router to forward messages (minus blacklist) for VCAN
@@ -91,6 +91,14 @@ static int check_IDs(u32_t id)
 			}
 }
 
+
+/*
+Forward all CAN traffic from CAN1 (AV Actuators VCAN) to CAN2 (OEM Truck VCAN)
+minus blacklisted messages.
+If ID = Blacklisted:
+	Then don't forward message
+else: forward message to CAN2
+*/
 static void CAN1_to_CAN2(void){
 	CANMsg_t  RxMsg, TxMsg;
 	int id_match;
@@ -116,15 +124,17 @@ static void CAN1_to_CAN2(void){
 			CAN2_LED_Toggle ^= 1;
 			if ( CAN2_LED_Toggle ){
 				HW_SetLED ( HW_LED_CAN2, HW_LED_OFF);
-				HW_SetLED ( HW_LED_CAN1b, HW_LED_OFF);
 			}else{
-				HW_SetLED ( HW_LED_CAN2, HW_LED_GREEN);
-				HW_SetLED ( HW_LED_CAN1b, HW_LED_RED);
+				HW_SetLED ( HW_LED_CAN2, HW_LED_ORANGE);
 			}
 		}
 	}
 }
 
+
+/*
+Forward all CAN traffic from CAN2 (OEM Truck VCAN) to CAN1 (AV Actuators VCAN)
+*/
 static void CAN2_to_CAN1(void){
 	CANMsg_t  RxMsg, TxMsg;
 
@@ -145,10 +155,8 @@ static void CAN2_to_CAN1(void){
 		CAN1_LED_Toggle ^= 1;
 		if ( CAN1_LED_Toggle ){
 			HW_SetLED ( HW_LED_CAN1, HW_LED_OFF);
-			HW_SetLED ( HW_LED_CAN2b, HW_LED_OFF);
 		} else{
-			HW_SetLED ( HW_LED_CAN1, HW_LED_GREEN);
-			HW_SetLED ( HW_LED_CAN2b, HW_LED_RED);
+			HW_SetLED ( HW_LED_CAN1, HW_LED_ORANGE);
 		}
 	}
 }
@@ -164,19 +172,18 @@ int  main ( void){
 	HW_Init();
 
 	// init CAN
+	// DEFAULT BAUD RATE = 500K for CAN1 and CAN2
 	CAN_UserInit();
 
 
 	// Set green LEDs for CAN1 and CAN2
 	HW_SetLED ( HW_LED_CAN1, HW_LED_GREEN);
 	HW_SetLED ( HW_LED_CAN2, HW_LED_GREEN);
-	HW_SetLED ( HW_LED_CAN1b, HW_LED_ORANGE);
-	HW_SetLED ( HW_LED_CAN2b, HW_LED_ORANGE);
 
 
 
 	// main loop
-	while ( 1){
+	while (1){
 		CAN1_to_CAN2();
 		CAN2_to_CAN1();
 	}
